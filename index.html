@@ -1,227 +1,305 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<title>الصيدليات المناوبة في عامودا</title>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>الصيدليات المناوبة في عامودا</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
 
 <style>
-body{
-  margin:0;
-  font-family:Tahoma,Arial;
-  background:#f4fdf8;
+:root{
+  --green:#1f9d6a;
+  --green-dark:#167a52;
+  --bg:#f3faf6;
+  --card:#ffffff;
+  --text:#1f2937;
+  --muted:#6b7280;
+  --line:#d1fae5;
+  --danger:#b42318;
+  --shadow:0 10px 26px rgba(0,0,0,.08);
 }
-header{
-  background:#1fa36a;
+*{box-sizing:border-box;font-family:system-ui}
+body{margin:0;background:var(--bg)}
+.hidden{display:none!important}
+
+/* Loading */
+#loading{
+  position:fixed;inset:0;
+  background:linear-gradient(135deg,var(--green),var(--green-dark));
   color:#fff;
-  text-align:center;
-  padding:18px;
-  font-size:22px;
-  font-weight:bold;
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;z-index:9999
 }
-.container{padding:15px}
-.search input{
-  width:100%;
-  padding:12px;
-  border-radius:10px;
-  border:1px solid #ccc;
-}
-.filters{
-  display:flex;
-  gap:10px;
-  margin:15px 0;
-}
+#loading .pill{font-size:46px}
+
+/* Public */
+#publicWrapper{max-width:760px;margin:auto;padding:24px 16px 110px}
+.main-title{text-align:center;font-size:28px;color:var(--green-dark);font-weight:900}
+.search input{width:100%;padding:14px;border-radius:14px;border:1px solid var(--line)}
+.filters{display:flex;gap:10px;margin-top:14px}
 .filters button{
-  flex:1;
-  padding:10px;
-  border:none;
-  border-radius:10px;
-  color:#fff;
-  font-weight:bold;
+  flex:1;padding:10px;border-radius:12px;
+  border:1px solid var(--line);background:#fff;
+  cursor:pointer;transition:.25s
 }
-.open{background:#1fa36a}
-.closed{background:#e74c3c}
-.all{background:#555}
-
+.filters button.active{
+  background:var(--green);color:#fff;font-weight:900
+}
 .card{
-  background:#fff;
-  border-radius:14px;
-  padding:15px;
-  margin-bottom:12px;
-  box-shadow:0 4px 10px rgba(0,0,0,.1);
+  background:#fff;border-radius:18px;padding:16px;
+  margin-bottom:14px;box-shadow:var(--shadow)
 }
-.card h3{margin:0 0 6px}
-.ok{color:#1fa36a;font-weight:bold}
-.no{color:#e74c3c;font-weight:bold}
+.card-top{display:flex;justify-content:space-between}
+.badge{padding:6px 14px;border-radius:999px;font-size:13px;font-weight:900}
+.open{background:#e6f7ef;color:var(--green-dark)}
+.closed{background:#fdeaea;color:var(--danger)}
+.meta{font-size:14px;color:var(--muted)}
+.empty{text-align:center;color:var(--muted);padding:20px}
 
-.lock{
-  position:fixed;
-  bottom:15px;
-  left:15px;
-  width:44px;
-  height:44px;
-  border-radius:50%;
-  background:rgba(0,0,0,.15);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:22px;
-  cursor:pointer;
+/* Lock */
+#lockBtn{
+  position:fixed;bottom:18px;left:18px;
+  background:transparent;border:0;font-size:22px;
+  cursor:pointer;opacity:.35
 }
+#lockBtn:hover{opacity:.8}
 
-.overlay{
-  position:fixed;
-  inset:0;
-  background:rgba(255,255,255,.95);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  z-index:9999;
+/* Modal */
+.modal{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.45);
+  display:flex;align-items:center;justify-content:center;
+  z-index:10000
 }
-.overlay-box{
-  background:#fff;
-  padding:25px;
-  border-radius:14px;
-  box-shadow:0 4px 15px rgba(0,0,0,.2);
-  text-align:center;
-  font-size:18px;
+.box{
+  background:#fff;border-radius:18px;
+  width:95%;max-width:1100px;
+  box-shadow:0 16px 40px rgba(0,0,0,.25)
 }
+.boxHeader{
+  padding:14px 16px;
+  background:linear-gradient(135deg,var(--green),var(--green-dark));
+  color:#fff;display:flex;justify-content:space-between
+}
+.hBtns button{
+  background:transparent;border:0;color:#fff;
+  cursor:pointer;font-size:13px;opacity:.8
+}
+.hBtns button:hover{opacity:1}
+.boxBody{padding:16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 
-.admin{display:none;padding:15px}
-.admin input{
-  width:100%;
-  padding:10px;
-  margin-bottom:8px;
+.panel{
+  background:#fff;border:1px solid var(--line);
+  border-radius:16px;padding:14px
 }
-.admin button{
-  width:100%;
-  padding:10px;
-  background:#1fa36a;
-  border:none;
-  color:#fff;
-  border-radius:8px;
-  font-weight:bold;
+.panel h3{margin:0 0 10px;color:var(--green-dark)}
+
+input,select{
+  width:100%;padding:10px;border-radius:12px;
+  border:1px solid var(--line);margin-bottom:8px
 }
+.btn{
+  padding:10px;border-radius:12px;
+  border:1px solid var(--line);cursor:pointer
+}
+.btn.primary{background:var(--green);color:#fff;font-weight:900}
+.btn.danger{color:var(--danger)}
+table{width:100%;border-collapse:collapse}
+th,td{border:1px solid var(--line);padding:8px;text-align:center;font-size:13px}
+th{background:#eafaf2}
 </style>
 </head>
 
 <body>
 
-<div class="overlay" id="loading">
-  <div class="overlay-box">
-    💊 جاري تحميل الصيدليات...<br>يرجى الانتظار
-  </div>
+<div id="loading">
+  <div class="pill">💊</div>
+  <div>جاري تحميل الصيدليات...</div>
 </div>
 
-<header>الصيدليات المناوبة في عامودا</header>
-
-<div class="container" id="publicUI">
-  <div class="search">
-    <input id="search" placeholder="ابحث عن صيدلية بالاسم">
+<div id="publicWrapper">
+  <h1 class="main-title">الصيدليات المناوبة في عامودا</h1>
+  <div class="search"><input id="searchInput" placeholder="🔍 ابحث عن صيدلية"></div>
+  <div class="filters" id="filters">
+    <button class="active" data-f="open">مفتوحة الآن</button>
+    <button data-f="closed">مغلقة الآن</button>
+    <button data-f="all">الكل</button>
   </div>
-
-  <div class="filters">
-    <button class="open" onclick="setFilter('open')">مفتوحة الآن</button>
-    <button class="closed" onclick="setFilter('closed')">مغلقة الآن</button>
-    <button class="all" onclick="setFilter('all')">الكل</button>
-  </div>
-
   <div id="list"></div>
 </div>
 
-<div class="admin" id="adminUI">
-  <h3>لوحة الأدمن</h3>
-  <input id="pname" placeholder="اسم الصيدلية">
-  <input id="paddress" placeholder="العنوان">
-  <input id="pphone" placeholder="الهاتف">
-  <input id="open" placeholder="وقت الفتح 10:00">
-  <input id="openampm" placeholder="AM / PM">
-  <input id="close" placeholder="وقت الإغلاق 03:00">
-  <input id="closeampm" placeholder="AM / PM">
-  <button onclick="add()">إضافة</button>
+<button id="lockBtn">🔒</button>
+
+<!-- Login -->
+<div class="modal hidden" id="loginModal">
+  <div class="box" style="max-width:420px">
+    <div class="boxHeader">
+      <span>دخول الأدمن</span>
+      <div class="hBtns"><button onclick="closeLogin()">إغلاق</button></div>
+    </div>
+    <div class="boxBody">
+      <input id="loginUser" placeholder="اسم المستخدم">
+      <input id="loginPass" type="password" placeholder="كلمة المرور">
+      <button class="btn primary" onclick="login()">دخول</button>
+      <div id="loginErr" class="hidden" style="color:red">بيانات خاطئة</div>
+    </div>
+  </div>
 </div>
 
-<div class="lock" onclick="login()">🔒</div>
+<!-- Admin -->
+<div class="modal hidden" id="adminModal">
+  <div class="box">
+    <div class="boxHeader">
+      <span>لوحة الأدمن — إدارة الصيدليات</span>
+      <div class="hBtns">
+        <button onclick="logout()">تسجيل خروج</button>
+        <button onclick="closeAdmin()">إغلاق</button>
+      </div>
+    </div>
+
+    <div class="boxBody grid">
+      <!-- Left -->
+      <div class="panel">
+        <h3>رفع Excel (استبدال كامل)</h3>
+        <input type="file" id="excelFile">
+        <button class="btn danger" onclick="clearAll()">مسح السجل</button>
+        <p class="meta">
+          الأعمدة:<br>
+          pharmacy – name – address – phone<br>
+          open – open_ampm – close – close_ampm
+        </p>
+
+        <h3>إضافة صيدلية</h3>
+        <input id="f_pharmacy" placeholder="اسم الصيدلية">
+        <input id="f_address" placeholder="العنوان">
+        <input id="f_phone" placeholder="الهاتف">
+        <input id="f_open" placeholder="فتح 10:00">
+        <select id="f_open_ampm"><option>AM</option><option>PM</option></select>
+        <input id="f_close" placeholder="إغلاق 03:00">
+        <select id="f_close_ampm"><option>AM</option><option>PM</option></select>
+        <button class="btn primary" onclick="addPharmacy()">حفظ</button>
+      </div>
+
+      <!-- Right -->
+      <div class="panel">
+        <h3>سجل الصيدليات</h3>
+        <table id="adminTable"></table>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
-const supabase = window.supabase.createClient(
-  "https://wvezqetliqbotmkybezj.supabase.co",
-  "sb_publishable_APdaO2PyWThd6ISkSdpR1Q_yfTNJO8y"
-);
+const SUPABASE_URL="https://wvezqetliqbotmkybezj.supabase.co";
+const API_KEY="sb_publishable_APdaO2PyWThd6ISkSdpR1Q_yfTNJO8y";
+const TABLE="pharmacies";
+const ADMIN_USER="amuda.br";
+const ADMIN_PASS="@Bb300300";
 
-let data=[],filter="open";
+let pharmacies=[],filter="open";
 
-function toMin(t,a){
-  let [h,m]=t.split(":").map(Number);
-  if(a==="PM" && h!==12)h+=12;
-  if(a==="AM" && h===12)h=0;
-  return h*60+m;
-}
+/* time */
+const toMin=(t,a)=>{let[h,m]=t.split(":").map(Number);if(a==="PM"&&h!==12)h+=12;if(a==="AM"&&h===12)h=0;return h*60+m}
+const isOpen=p=>{const n=new Date(),now=n.getHours()*60+n.getMinutes();const o=toMin(p.open,p.open_ampm),c=toMin(p.close,p.close_ampm);return c<o?(now>=o||now<c):(now>=o&&now<c)}
 
-function isOpen(p){
-  const n=new Date(),now=n.getHours()*60+n.getMinutes();
-  const o=toMin(p.open,p.open_ampm);
-  const c=toMin(p.close,p.close_ampm);
-  return c<o ? now>=o||now<=c : now>=o&&now<=c;
-}
-
+/* render */
 function render(){
-  const q=search.value.toLowerCase();
-  list.innerHTML="";
-  data.forEach(p=>{
-    const o=isOpen(p);
-    if(filter==="open"&&!o)return;
-    if(filter==="closed"&&o)return;
-    if(!p.pharmacy.toLowerCase().includes(q))return;
-    list.innerHTML+=`
-      <div class="card">
-        <h3>${p.pharmacy}</h3>
-        <div>${p.address}</div>
-        <div>${p.phone}</div>
-        <div class="${o?'ok':'no'}">${o?'مفتوحة الآن':'مغلقة الآن'}</div>
-      </div>`;
-  });
+  const q=searchInput.value.toLowerCase();
+  let items=pharmacies.filter(p=>p.pharmacy.toLowerCase().includes(q)).map(p=>({...p,_o:isOpen(p)}));
+  if(filter==="open")items=items.filter(p=>p._o);
+  if(filter==="closed")items=items.filter(p=>!p._o);
+  list.innerHTML=items.length?items.map(p=>`
+    <div class="card">
+      <div class="card-top">
+        <div>
+          <b>${p.pharmacy}</b>
+          <div class="meta">${p.address||""}</div>
+          <div class="meta">${p.phone||""}</div>
+        </div>
+        <span class="badge ${p._o?"open":"closed"}">${p._o?"مفتوحة":"مغلقة"}</span>
+      </div>
+    </div>`).join(""):`<div class="empty">لا يوجد بيانات</div>`;
 }
 
-function setFilter(f){filter=f;render()}
-
+/* load */
 async function load(){
-  try{
-    const r=await supabase.from("pharmacies").select("*");
-    data=r.data||[];
-  }catch(e){data=[]}
-  document.getElementById("loading").style.display="none";
-  render();
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?select=*`,{headers:{apikey:API_KEY,Authorization:`Bearer ${API_KEY}`}});
+  pharmacies=await r.json();
+  loading.style.display="none";
+  render();drawAdmin();
 }
 
+/* filters */
+filters.onclick=e=>{
+  if(!e.target.dataset.f)return;
+  filters.querySelectorAll("button").forEach(b=>b.classList.remove("active"));
+  e.target.classList.add("active");
+  filter=e.target.dataset.f;render();
+}
+searchInput.oninput=render;
+
+/* login */
+lockBtn.onclick=()=>loginModal.classList.remove("hidden");
+function closeLogin(){loginModal.classList.add("hidden")}
 function login(){
-  const u=prompt("اسم المستخدم");
-  const p=prompt("كلمة المرور");
-  if(u==="amuda.br"&&p==="@Bb300300"){
-    publicUI.style.display="none";
-    adminUI.style.display="block";
-  }else alert("بيانات خاطئة");
+  if(loginUser.value===ADMIN_USER&&loginPass.value===ADMIN_PASS){
+    loginModal.classList.add("hidden");
+    publicWrapper.classList.add("hidden");
+    adminModal.classList.remove("hidden");
+  }else loginErr.classList.remove("hidden");
 }
+function logout(){adminModal.classList.add("hidden");publicWrapper.classList.remove("hidden")}
+function closeAdmin(){adminModal.classList.add("hidden");publicWrapper.classList.remove("hidden")}
 
-async function add(){
-  await supabase.from("pharmacies").insert([{
-    pharmacy:pname.value,
-    address:paddress.value,
-    phone:pphone.value,
-    open:open.value,
-    open_ampm:openampm.value,
-    close:close.value,
-    close_ampm:closeampm.value
-  }]);
-  alert("تمت الإضافة");
+/* admin */
+function drawAdmin(){
+  adminTable.innerHTML=`<tr><th>اسم</th><th>حذف</th></tr>`+
+    pharmacies.map(p=>`<tr><td>${p.pharmacy}</td><td><button class="btn danger" onclick="delPh('${p.id}')">حذف</button></td></tr>`).join("");
+}
+async function delPh(id){
+  await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${id}`,{method:"DELETE",headers:{apikey:API_KEY,Authorization:`Bearer ${API_KEY}`}});
+  load();
+}
+async function addPharmacy(){
+  await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}`,{
+    method:"POST",
+    headers:{apikey:API_KEY,Authorization:`Bearer ${API_KEY}`,"Content-Type":"application/json"},
+    body:JSON.stringify({
+      pharmacy:f_pharmacy.value,
+      address:f_address.value,
+      phone:f_phone.value,
+      open:f_open.value,
+      open_ampm:f_open_ampm.value,
+      close:f_close.value,
+      close_ampm:f_close_ampm.value
+    })
+  });
+  load();
+}
+async function clearAll(){
+  await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}`,{method:"DELETE",headers:{apikey:API_KEY,Authorization:`Bearer ${API_KEY}`}});
   load();
 }
 
-search.oninput=render;
+/* Excel */
+excelFile.onchange=async e=>{
+  const buf=await e.target.files[0].arrayBuffer();
+  const wb=XLSX.read(buf,{type:"array"});
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+  await clearAll();
+  for(const r of rows){
+    await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}`,{
+      method:"POST",
+      headers:{apikey:API_KEY,Authorization:`Bearer ${API_KEY}`,"Content-Type":"application/json"},
+      body:JSON.stringify(r)
+    });
+  }
+  load();
+}
+
 load();
 </script>
-
 </body>
 </html>
