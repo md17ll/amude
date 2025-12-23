@@ -1,640 +1,1113 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>الصيدليات المناوبة في عامودا</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>الصيدليات المناوبة في عامودا</title>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+  <style>
+    :root{
+      --green:#1f9d6a;
+      --green-dark:#167a52;
+      --bg:#f3faf6;
+      --card:#ffffff;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --line:#d1fae5;
+      --danger:#b42318;
+      --shadow:0 10px 26px rgba(0,0,0,.08);
+    }
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Arial}
+    body{margin:0;background:var(--bg);color:var(--text)}
+    .hidden{display:none !important}
 
-<style>
-:root{
-  --green:#1f9d6a;
-  --green-dark:#167a52;
-  --bg:#f3faf6;
-  --card:#ffffff;
-  --text:#1f2937;
-  --muted:#6b7280;
-  --line:#d1fae5;
-  --danger:#b42318;
-  --shadow:0 10px 26px rgba(0,0,0,.08);
-}
-*{box-sizing:border-box;font-family:system-ui}
-body{margin:0;background:var(--bg)}
-.hidden{display:none!important}
+    /* ===== Loading Overlay ===== */
+    #loading{
+      position:fixed; inset:0;
+      background:linear-gradient(135deg,var(--green),var(--green-dark));
+      color:#fff;
+      display:flex; align-items:center; justify-content:center;
+      flex-direction:column;
+      z-index:9999;
+      transition:opacity .25s ease;
+    }
+    #loading.hide{opacity:0; pointer-events:none}
+    #loading .pill{font-size:44px}
+    #loading .msg{margin-top:10px; opacity:.95; text-align:center; line-height:1.6}
 
-/* Loading */
-#loading{
-  position:fixed;inset:0;
-  background:linear-gradient(135deg,var(--green),var(--green-dark));
-  color:#fff;
-  display:flex;align-items:center;justify-content:center;
-  flex-direction:column;z-index:9999
-}
-#loading .pill{font-size:46px}
-#loading .msg{margin-top:10px;text-align:center;line-height:1.7}
+    /* ===== Layout ===== */
+    #publicWrapper{
+      max-width:760px;
+      margin:auto;
+      padding:18px 16px 110px;
+    }
 
-/* Toast */
-#toast{
-  position:fixed;top:14px;left:50%;
-  transform:translateX(-50%);
-  background:#111827;color:#fff;
-  padding:10px 14px;border-radius:12px;
-  font-size:13px;opacity:0;pointer-events:none;
-  transition:.2s;z-index:20000
-}
-#toast.show{opacity:1;transform:translateX(-50%) translateY(2px)}
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .todayBadge{
+      font-size:13px;
+      background:#eafaf2;
+      color:var(--green-dark);
+      border:1px solid rgba(22,122,82,.18);
+      padding:8px 12px;
+      border-radius:999px;
+      font-weight:900;
+      box-shadow:0 6px 16px rgba(0,0,0,.05);
+      white-space:nowrap;
+    }
 
-/* Public */
-#publicWrapper{max-width:760px;margin:auto;padding:18px 16px 110px}
-.topbar{
-  display:flex;
-  align-items:center;
-  justify-content:flex-start; /* RTL: يبدأ من اليمين */
-  margin-bottom:8px;
-}
-#dateBox{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  padding:8px 12px;
-  border-radius:12px;
-  background:#fff;
-  border:1px solid var(--line);
-  box-shadow:0 6px 16px rgba(0,0,0,.06);
-  color:var(--green-dark);
-  font-weight:900;
-  font-size:13px;
-  user-select:none;
-}
-#dateBox .mut{color:var(--muted);font-weight:700}
+    .main-title{
+      text-align:center;
+      font-size:28px;
+      color:var(--green-dark);
+      margin:8px 0 14px;
+      font-weight:900;
+      letter-spacing:.2px;
+      flex:1;
+    }
 
-.main-title{text-align:center;font-size:28px;color:var(--green-dark);font-weight:900;margin:8px 0 14px}
-.search input{width:100%;padding:14px;border-radius:14px;border:1px solid var(--line);outline:none}
+    /* Search */
+    .search input{
+      width:100%;
+      padding:14px 16px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      font-size:16px;
+      outline:none;
+      background:#fff;
+      box-shadow:0 4px 12px rgba(0,0,0,.06);
+    }
 
-.filters{display:flex;gap:10px;margin-top:14px}
-.filters button{
-  flex:1;padding:10px;border-radius:12px;
-  border:1px solid var(--line);background:#fff;
-  cursor:pointer;
-  transition:transform .08s ease, background .2s ease, color .2s ease, box-shadow .2s ease;
-}
-.filters button:active{transform:scale(.98)}
-.filters button.active{
-  background:var(--green);color:#fff;font-weight:900;
-  box-shadow:0 8px 18px rgba(31,157,106,.28);
-}
+    /* Filters */
+    .filters{
+      display:flex;
+      gap:10px;
+      margin-top:14px;
+    }
+    .filters button{
+      flex:1;
+      padding:10px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:#fff;
+      cursor:pointer;
+      font-size:14px;
+      transition:transform .12s ease, background .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease;
+      user-select:none;
+    }
+    .filters button:active{transform:scale(.97)}
+    .filters button.active{
+      background:var(--green);
+      color:#fff;
+      border-color:var(--green);
+      font-weight:900;
+      box-shadow:0 6px 18px rgba(31,157,106,.22);
+    }
 
-.section-title{font-size:18px;margin:18px 0 12px;color:var(--green-dark);font-weight:900}
+    .section-title{
+      font-size:20px;
+      margin:22px 0 12px;
+      color:var(--green-dark);
+      font-weight:900;
+    }
 
-/* Cards */
-.card{
-  background:#fff;border-radius:18px;padding:16px;
-  margin-bottom:14px;box-shadow:var(--shadow)
-}
-.card-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    /* Cards */
+    .card{
+      background:var(--card);
+      border-radius:18px;
+      padding:16px;
+      margin-bottom:14px;
+      box-shadow:var(--shadow);
+      border:1px solid rgba(209,250,229,.35);
+    }
+    .card-top{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:10px;
+    }
+    .card h3{
+      margin:0;
+      font-size:18px;
+      font-weight:900;
+    }
+    .meta{
+      font-size:14px;
+      color:var(--muted);
+      margin-top:6px;
+      line-height:1.6;
+    }
 
-/* ✅ status badge as RECTANGLE */
-.badge{
-  padding:7px 12px;
-  border-radius:8px;     /* مستطيل مرتب */
-  font-size:13px;
-  font-weight:900;
-  white-space:nowrap;
-  border:1px solid transparent;
-}
-.open{background:#e6f7ef;color:var(--green-dark);border-color:rgba(22,122,82,.18)}
-.closed{background:#fdeaea;color:var(--danger);border-color:rgba(180,35,24,.18)}
+    /* مستطيل الحالة (مرتب) */
+    .statusRect{
+      padding:7px 12px;
+      border-radius:10px;
+      font-size:13px;
+      font-weight:900;
+      white-space:nowrap;
+      border:1px solid transparent;
+      min-width:92px;
+      text-align:center;
+    }
+    .statusOpen{
+      background:#e6f7ef;
+      color:var(--green-dark);
+      border-color:rgba(22,122,82,.18);
+    }
+    .statusClosed{
+      background:#fdeaea;
+      color:var(--danger);
+      border-color:rgba(180,35,24,.18);
+    }
 
-.meta{font-size:14px;color:var(--muted);margin-top:4px;line-height:1.6}
-.empty{text-align:center;color:var(--muted);padding:20px;background:#fff;border:1px dashed rgba(22,122,82,.22);border-radius:18px}
+    .actions{
+      margin-top:10px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .chip{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:9px 12px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--text);
+      text-decoration:none;
+      font-size:14px;
+    }
 
-/* Lock */
-#lockBtn{
-  position:fixed;bottom:18px;left:18px;
-  background:transparent;border:0;font-size:22px;
-  cursor:pointer;opacity:.35
-}
-#lockBtn:hover{opacity:.8}
+    /* Empty state */
+    .empty{
+      background:#fff;
+      border:1px dashed rgba(22,122,82,.25);
+      border-radius:18px;
+      padding:18px;
+      color:var(--muted);
+      text-align:center;
+      box-shadow:0 8px 22px rgba(0,0,0,.05);
+    }
 
-/* Modal */
-.modal{
-  position:fixed;inset:0;
-  background:rgba(0,0,0,.45);
-  display:flex;align-items:center;justify-content:center;
-  z-index:10000;padding:14px
-}
-.box{
-  background:#fff;border-radius:18px;
-  width:100%;max-width:1100px;
-  box-shadow:0 16px 40px rgba(0,0,0,.25);
-  overflow:hidden
-}
-.boxHeader{
-  padding:14px 16px;
-  background:linear-gradient(135deg,var(--green),var(--green-dark));
-  color:#fff;display:flex;justify-content:space-between;align-items:center;gap:10px
-}
-.hBtns{display:flex;gap:10px;flex-wrap:wrap}
-.hBtns button{
-  background:transparent;border:0;color:#fff;
-  cursor:pointer;font-size:13px;opacity:.85
-}
-.hBtns button:hover{opacity:1}
-.boxBody{padding:16px}
-.grid{display:grid;grid-template-columns:1fr;gap:16px}
-@media(min-width:900px){.grid{grid-template-columns:1fr 1fr}}
+    /* ===== Admin lock (transparent + smaller) ===== */
+    #lockBtn{
+      position:fixed;
+      bottom:18px;
+      left:18px;
+      width:34px;
+      height:34px;
+      border-radius:10px;
+      background:transparent;
+      border:0;
+      padding:0;
+      cursor:pointer;
+      z-index:200;
+      opacity:.28;
+      transition:opacity .15s ease, transform .05s ease;
+    }
+    #lockBtn:hover{opacity:.75}
+    #lockBtn:active{transform:scale(.98)}
+    #lockBtn svg{width:22px;height:22px;display:block;margin:auto;fill:var(--green-dark);}
 
-.panel{
-  background:#fff;border:1px solid var(--line);
-  border-radius:16px;padding:14px
-}
-.panel h3{margin:0 0 10px;color:var(--green-dark);font-weight:900}
-.hint{color:var(--muted);font-size:12px;line-height:1.6}
+    /* ===== Modal base ===== */
+    .modal{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.45);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:10000;
+      padding:18px;
+    }
+    .modal.hidden{display:none}
+    .box{
+      width:100%;
+      max-width:980px;
+      background:#fff;
+      border-radius:18px;
+      box-shadow:0 16px 40px rgba(0,0,0,.25);
+      overflow:hidden;
+    }
+    .boxHeader{
+      padding:14px 16px;
+      background:linear-gradient(135deg,var(--green),var(--green-dark));
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .boxHeader h2{margin:0;font-size:16px;font-weight:900}
+    .boxHeader .hdrBtns{display:flex;gap:8px;flex-wrap:wrap}
+    .hdrBtn{
+      background:rgba(255,255,255,.14);
+      color:#fff;
+      border:1px solid rgba(255,255,255,.22);
+      padding:8px 10px;
+      border-radius:12px;
+      cursor:pointer;
+      font-size:13px;
+      user-select:none;
+      transition:transform .12s ease, background .18s ease;
+    }
+    .hdrBtn:active{transform:scale(.97)}
+    .boxBody{padding:16px}
 
-input,select{
-  width:100%;padding:10px;border-radius:12px;
-  border:1px solid var(--line);margin-bottom:8px;outline:none
-}
-.row{display:flex;gap:10px;flex-wrap:wrap}
-.row > *{flex:1;min-width:140px}
+    .loginBox{
+      max-width:420px;
+      width:100%;
+      background:#fff;
+      border-radius:18px;
+      overflow:hidden;
+      box-shadow:0 16px 40px rgba(0,0,0,.25);
+    }
+    .loginBody{padding:16px}
 
-.btn{
-  padding:10px;border-radius:12px;
-  border:1px solid var(--line);cursor:pointer;background:#fff
-}
-.btn.primary{background:var(--green);color:#fff;font-weight:900;border-color:var(--green)}
-.btn.danger{color:var(--danger);border-color:rgba(180,35,24,.25)}
-table{width:100%;border-collapse:collapse}
-th,td{border:1px solid var(--line);padding:8px;text-align:center;font-size:13px;vertical-align:top}
-th{background:#eafaf2}
-.small{padding:7px 10px;border-radius:10px;font-size:12px}
-</style>
+    .grid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:12px;
+    }
+    @media (min-width:980px){
+      .grid{grid-template-columns:1.12fr .88fr}
+    }
+
+    .panel{
+      background:#fff;
+      border:1px solid rgba(209,250,229,.6);
+      border-radius:16px;
+      padding:14px;
+      box-shadow:0 10px 26px rgba(0,0,0,.06);
+    }
+    .panel h3{margin:0 0 10px;font-size:15px;color:var(--green-dark);font-weight:900}
+    .row{display:flex; gap:10px; flex-wrap:wrap}
+    .field{flex:1; min-width:180px}
+    .field label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px}
+    .field input, .field select{
+      width:100%;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      outline:none;
+      background:#fff;
+      font-size:14px;
+    }
+
+    .btn{
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:#fff;
+      cursor:pointer;
+      font-size:14px;
+      user-select:none;
+      transition:transform .12s ease, box-shadow .18s ease;
+    }
+    .btn:active{transform:scale(.97)}
+    .btn.primary{
+      background:var(--green);
+      color:#fff;
+      border-color:var(--green);
+      font-weight:900;
+      box-shadow:0 6px 18px rgba(31,157,106,.18);
+    }
+    .btn.danger{
+      background:#fff;
+      color:var(--danger);
+      border-color:rgba(180,35,24,.25);
+      font-weight:900;
+    }
+    .hint{color:var(--muted); font-size:12px; line-height:1.6; margin-top:8px}
+    .err{color:var(--danger);font-size:13px;margin-top:10px;display:none}
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      overflow:hidden;
+      border-radius:14px;
+      border:1px solid rgba(209,250,229,.7);
+      background:#fff;
+    }
+    th,td{
+      border-bottom:1px solid rgba(209,250,229,.8);
+      padding:9px 8px;
+      font-size:13px;
+      text-align:center;
+      vertical-align:top;
+      white-space:nowrap;
+    }
+    th{background:#eafaf2;color:var(--green-dark);font-weight:900}
+    tr:last-child td{border-bottom:none}
+    .tblBtns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+    .small{font-size:12px;padding:7px 10px;border-radius:10px}
+
+    /* Toast */
+    #toast{
+      position:fixed;
+      top:14px;
+      left:50%;
+      transform:translateX(-50%);
+      background:#111827;
+      color:#fff;
+      padding:10px 14px;
+      border-radius:12px;
+      font-size:13px;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .18s ease, transform .18s ease;
+      z-index:12000;
+    }
+    #toast.show{
+      opacity:1;
+      transform:translateX(-50%) translateY(2px);
+    }
+  </style>
+
+  <!-- Excel reader (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
 </head>
 
 <body>
-
-<div id="loading">
-  <div class="pill">💊</div>
-  <div class="msg">جاري تحميل الصيدليات...<br>يرجى الانتظار</div>
-</div>
-
-<div id="toast"></div>
-
-<div id="publicWrapper">
-  <div class="topbar">
-    <div id="dateBox"></div>
+  <!-- Loading overlay -->
+  <div id="loading">
+    <div class="pill">💊</div>
+    <div class="msg">جاري تحميل الصيدليات...<br>يرجى الانتظار</div>
   </div>
 
-  <h1 class="main-title">الصيدليات المناوبة في عامودا</h1>
-
-  <div class="search">
-    <input id="searchInput" placeholder="🔍 ابحث عن صيدلية">
-  </div>
-
-  <div class="filters" id="filters">
-    <button class="active" data-f="open">مفتوحة الآن</button>
-    <button data-f="closed">مغلقة الآن</button>
-    <button data-f="all">الكل</button>
-  </div>
-
-  <div class="section-title" id="todayTitle"></div>
-  <div id="list"></div>
-</div>
-
-<button id="lockBtn" title="قسم الأدمن">🔒</button>
-
-<!-- Login -->
-<div class="modal hidden" id="loginModal">
-  <div class="box" style="max-width:420px">
-    <div class="boxHeader">
-      <span style="font-weight:900">دخول الأدمن</span>
-      <div class="hBtns"><button type="button" onclick="closeLogin()">إغلاق</button></div>
+  <div id="publicWrapper">
+    <div class="topbar">
+      <div class="todayBadge" id="todayBadge">📅 —</div>
+      <h1 class="main-title">الصيدليات المناوبة في عامودا</h1>
+      <div style="width:86px"></div>
     </div>
-    <div class="boxBody">
-      <input id="loginUser" placeholder="اسم المستخدم" autocomplete="username">
-      <input id="loginPass" type="password" placeholder="كلمة المرور" autocomplete="current-password">
-      <button class="btn primary" type="button" onclick="login()">دخول</button>
-      <div id="loginErr" class="hidden" style="color:var(--danger);margin-top:8px">بيانات خاطئة</div>
-    </div>
-  </div>
-</div>
 
-<!-- Admin -->
-<div class="modal hidden" id="adminModal">
-  <div class="box">
-    <div class="boxHeader">
-      <span style="font-weight:900">لوحة الأدمن — إدارة الصيدليات</span>
-      <div class="hBtns">
-        <button type="button" onclick="logout()">تسجيل خروج</button>
-        <button type="button" onclick="closeAdmin()">إغلاق</button>
+    <div class="search">
+      <input id="searchInput" placeholder="🔍 ابحث عن صيدلية بالاسم" autocomplete="off" />
+    </div>
+
+    <!-- ترتيب الفلترة: مفتوحة الآن، مغلقة الآن، الكل -->
+    <div class="filters" id="filters">
+      <button type="button" class="active" data-filter="open">مفتوحة الآن</button>
+      <button type="button" data-filter="closed">مغلقة الآن</button>
+      <button type="button" data-filter="all">الكل</button>
+    </div>
+
+    <div class="section-title">الصيدليات المناوبة الآن</div>
+    <div id="list"></div>
+  </div>
+
+  <!-- Transparent small admin lock -->
+  <button id="lockBtn" aria-label="قسم الأدمن" title="قسم الأدمن">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2zm-7-2a2 2 0 1 1 4 0v2h-4V7zm3.1 9.7-.3.3V18a.8.8 0 0 1-1.6 0v-1l-.3-.3a1.5 1.5 0 1 1 2.2 0z"/>
+    </svg>
+  </button>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <!-- Login modal -->
+  <div class="modal hidden" id="loginModal">
+    <div class="loginBox">
+      <div class="boxHeader">
+        <h2>دخول الأدمن</h2>
+        <div class="hdrBtns">
+          <button class="hdrBtn" id="loginCloseBtn" type="button">إلغاء</button>
+        </div>
       </div>
-    </div>
-
-    <div class="boxBody grid">
-      <!-- Left -->
-      <div class="panel">
-        <h3>رفع Excel شهريًا (استبدال كامل)</h3>
-        <input type="file" id="excelFile" accept=".xlsx,.xls">
-        <div class="row" style="margin-top:6px">
-          <button class="btn danger" type="button" onclick="clearAll()">مسح السجل</button>
+      <div class="loginBody">
+        <div class="field">
+          <label>اسم المستخدم</label>
+          <input id="loginUser" autocomplete="username" />
         </div>
-
-        <div class="hint" style="margin-top:10px">
-          الأعمدة المطلوبة في Excel:<br>
-          <b>pharmacy</b>, <b>address</b>, <b>phone</b>, <b>duty_day</b>, <b>open</b>, <b>open_ampm</b>, <b>close</b>, <b>close_ampm</b><br>
-          أو بالعربي:<br>
-          <b>اسم الصيدلية</b>, <b>العنوان</b>, <b>رقم الهاتف</b>, <b>يوم المناوبة</b>, <b>فتح</b>, <b>فتح AM/PM</b>, <b>إغلاق</b>, <b>إغلاق AM/PM</b><br>
-          مثال: open = 10:00 و open_ampm = AM
+        <div class="field" style="margin-top:10px">
+          <label>كلمة المرور</label>
+          <input id="loginPass" type="password" autocomplete="current-password" />
         </div>
-
-        <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
-
-        <h3>إضافة صيدلية</h3>
-        <input id="f_pharmacy" placeholder="اسم الصيدلية">
-        <input id="f_address" placeholder="العنوان">
-        <input id="f_phone" placeholder="الهاتف">
-
-        <select id="f_duty_day" style="margin-top:2px">
-          <option value="">اختر يوم المناوبة</option>
-          <option>السبت</option>
-          <option>الأحد</option>
-          <option>الإثنين</option>
-          <option>الثلاثاء</option>
-          <option>الأربعاء</option>
-          <option>الخميس</option>
-          <option>الجمعة</option>
-        </select>
-
-        <div class="row">
-          <input id="f_open" placeholder="ساعة الفتح 10:00">
-          <select id="f_open_ampm"><option>AM</option><option>PM</option></select>
+        <div class="row" style="margin-top:12px">
+          <button class="btn primary" id="loginBtn" type="button" style="flex:1;min-width:140px">دخول</button>
+          <button class="btn" id="loginCancelBtn" type="button" style="flex:1;min-width:140px">إلغاء</button>
         </div>
-        <div class="row">
-          <input id="f_close" placeholder="ساعة الإغلاق 03:00">
-          <select id="f_close_ampm"><option>AM</option><option selected>PM</option></select>
-        </div>
-
-        <button class="btn primary" id="saveBtn" type="button" onclick="addPharmacy()">حفظ</button>
-      </div>
-
-      <!-- Right -->
-      <div class="panel">
-        <h3>سجل الصيدليات (كل الأيام)</h3>
-        <div style="overflow:auto">
-          <table id="adminTable"></table>
-        </div>
-        <div class="hint" style="margin-top:10px">
-          ملاحظة: الموقع للزوار يعرض <b>مناوبة اليوم فقط</b>.
-        </div>
+        <div class="err" id="loginErr">بيانات الدخول غير صحيحة</div>
       </div>
     </div>
   </div>
-</div>
+
+  <!-- Admin modal -->
+  <div class="modal hidden" id="adminModal">
+    <div class="box">
+      <div class="boxHeader">
+        <h2>لوحة الأدمن — إدارة الصيدليات</h2>
+        <div class="hdrBtns">
+          <button class="hdrBtn" id="adminLogoutBtn" type="button">تسجيل خروج</button>
+          <button class="hdrBtn" id="adminCloseBtn" type="button">إغلاق</button>
+        </div>
+      </div>
+
+      <div class="boxBody">
+        <div class="grid">
+          <!-- Left: table -->
+          <div class="panel">
+            <h3>سجل الصيدليات</h3>
+            <div class="hint">يمكنك تعديل/حذف أي صيدلية، أو رفع ملف Excel شهريًا لاستبدال السجل بالكامل.</div>
+            <div style="margin-top:12px; overflow:auto;">
+              <table id="adminTable"></table>
+            </div>
+          </div>
+
+          <!-- Right: actions + form -->
+          <div class="panel">
+            <h3>رفع Excel شهريًا (استبدال كامل)</h3>
+            <div class="row">
+              <input id="excelFile" type="file" accept=".xlsx,.xls" class="btn" style="flex:1;min-width:220px" />
+              <button class="btn danger" id="clearDataBtn" type="button" style="min-width:160px">مسح السجل</button>
+            </div>
+            <div class="hint">
+              الأعمدة المطلوبة في Excel (نظام التاريخ):
+              <br><b>pharmacy</b>, <b>address</b>, <b>phone</b>, <b>duty_date</b>, <b>open</b>, <b>open_ampm</b>, <b>close</b>, <b>close_ampm</b>
+              <br>صيغة التاريخ: <b>YYYY-MM-DD</b> مثل: <b>2025-12-23</b>
+              <br>الوقت بنظام 12 ساعة مثل: <b>10:00</b> مع <b>AM</b> أو <b>PM</b>
+            </div>
+
+            <hr style="border:none;border-top:1px solid rgba(209,250,229,.9); margin:14px 0;">
+
+            <h3 id="formTitle">إضافة صيدلية</h3>
+
+            <div class="row">
+              <div class="field" style="flex:1.2;min-width:240px">
+                <label>اسم الصيدلية</label>
+                <input id="f_pharmacy" placeholder="مثال: صيدلية الشفاء" />
+              </div>
+              <div class="field" style="flex:1;min-width:200px">
+                <label>تاريخ المناوبة (YYYY-MM-DD)</label>
+                <input id="f_duty_date" placeholder="2025-12-23" />
+              </div>
+            </div>
+
+            <div class="row" style="margin-top:10px">
+              <div class="field" style="flex:1.2;min-width:240px">
+                <label>العنوان</label>
+                <input id="f_address" placeholder="عامودا - ..." />
+              </div>
+              <div class="field" style="flex:1;min-width:200px">
+                <label>رقم الهاتف</label>
+                <input id="f_phone" placeholder="09xxxxxxxx" />
+              </div>
+            </div>
+
+            <div class="row" style="margin-top:10px">
+              <div class="field">
+                <label>ساعة الفتح</label>
+                <input id="f_open" placeholder="10:00" />
+              </div>
+              <div class="field" style="min-width:120px">
+                <label>AM/PM</label>
+                <select id="f_openAmpm">
+                  <option>AM</option>
+                  <option>PM</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>ساعة الإغلاق</label>
+                <input id="f_close" placeholder="03:00" />
+              </div>
+              <div class="field" style="min-width:120px">
+                <label>AM/PM</label>
+                <select id="f_closeAmpm">
+                  <option>AM</option>
+                  <option selected>PM</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row" style="margin-top:12px">
+              <button class="btn primary" id="saveBtn" type="button" style="flex:1;min-width:160px">حفظ</button>
+              <button class="btn" id="cancelEditBtn" type="button" style="flex:1;min-width:160px">إلغاء التعديل</button>
+            </div>
+
+            <div class="hint" id="formHint"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
 <script>
-/* ===================== Supabase ===================== */
-const SUPABASE_URL="https://wvezqetliqbotmkybezj.supabase.co";
-const API_KEY="sb_publishable_APdaO2PyWThd6ISkSdpR1Q_yfTNJO8y";
-const TABLE="pharmacies";
+/* =========================
+   Supabase Settings
+========================= */
+const SUPABASE_URL = "https://wvezqetliqbotmkybezj.supabase.co";
+const SUPABASE_KEY = "sb_publishable_APdaO2PyWThd6ISkSdpR1Q_yfTNJO8y";
+const TABLE = "pharmacies";
 
-/* Admin */
-const ADMIN_USER="amuda.br";
-const ADMIN_PASS="@Bb300300";
+/* بيانات الأدمن */
+const ADMIN_USER = "amuda.br";
+const ADMIN_PASS = "@Bb300300";
 
-let pharmacies=[], filter="open";
+/* =========================
+   Helpers
+========================= */
+function escapeHtml(s){
+  return String(s ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function normalizeAmpm(v){
+  const s = String(v ?? "").trim().toUpperCase();
+  return (s === "PM") ? "PM" : "AM";
+}
+function normalizeTime(v){
+  const s = String(v ?? "").trim();
+  const m = s.match(/^(\d{1,2})(?::(\d{1,2}))?$/);
+  if(!m) return "";
+  let hh = Number(m[1]);
+  let mm = Number(m[2] ?? 0);
+  if(!Number.isFinite(hh) || !Number.isFinite(mm)) return "";
+  if(hh < 1 || hh > 12) return "";
+  if(mm < 0 || mm > 59) return "";
+  return String(hh).padStart(2,"0") + ":" + String(mm).padStart(2,"0");
+}
+function normalizeDate(v){
+  // returns YYYY-MM-DD or ""
+  if(v == null) return "";
+  if(v instanceof Date && !isNaN(v.getTime())){
+    const y=v.getFullYear(), m=String(v.getMonth()+1).padStart(2,"0"), d=String(v.getDate()).padStart(2,"0");
+    return `${y}-${m}-${d}`;
+  }
+  if(typeof v === "number" && window.XLSX?.SSF?.parse_date_code){
+    const dc = XLSX.SSF.parse_date_code(v);
+    if(dc && dc.y && dc.m && dc.d){
+      const y=dc.y, m=String(dc.m).padStart(2,"0"), d=String(dc.d).padStart(2,"0");
+      return `${y}-${m}-${d}`;
+    }
+  }
+  const s = String(v).trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m1 = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if(m1){
+    const dd=String(m1[1]).padStart(2,"0");
+    const mm=String(m1[2]).padStart(2,"0");
+    const yy=m1[3];
+    return `${yy}-${mm}-${dd}`;
+  }
+  const dt = new Date(s);
+  if(!isNaN(dt.getTime())){
+    const y=dt.getFullYear(), m=String(dt.getMonth()+1).padStart(2,"0"), d=String(dt.getDate()).padStart(2,"0");
+    return `${y}-${m}-${d}`;
+  }
+  return "";
+}
+function formatArabicDateLabel(iso){
+  try{
+    const [y,m,d]=iso.split("-").map(Number);
+    const dt = new Date(y, m-1, d);
+    const days = ["الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
+    const dayName = days[dt.getDay()];
+    return `📅 ${dayName} — ${iso}`;
+  }catch(_e){
+    return `📅 ${iso}`;
+  }
+}
+function todayISO(){
+  const n = new Date();
+  const y=n.getFullYear(), m=String(n.getMonth()+1).padStart(2,"0"), d=String(n.getDate()).padStart(2,"0");
+  return `${y}-${m}-${d}`;
+}
 
 /* Toast */
-const toastEl=document.getElementById("toast");
-let tmr=null;
+const toastEl = document.getElementById("toast");
+let toastTimer = null;
 function toast(msg){
-  toastEl.textContent=msg;
+  toastEl.textContent = msg;
   toastEl.classList.add("show");
-  clearTimeout(tmr);
-  tmr=setTimeout(()=>toastEl.classList.remove("show"),1800);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> toastEl.classList.remove("show"), 1800);
 }
 
-/* Helpers */
-function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]))}
-function normAmpm(v){v=String(v??"").trim().toUpperCase();return v==="PM"?"PM":"AM"}
-function normTime(v){
-  v=String(v??"").trim();
-  const m=v.match(/^(\d{1,2})(?::(\d{1,2}))?$/);
-  if(!m) return "";
-  let hh=+m[1], mm=+(m[2]??0);
-  if(hh<1||hh>12||mm<0||mm>59) return "";
-  return String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0");
+/* =========================
+   Time Logic (12h AM/PM)
+========================= */
+function toMinutes(t, ampm){
+  const parts = String(t).split(":");
+  if(parts.length !== 2) return null;
+  const h0 = Number(parts[0]);
+  const m0 = Number(parts[1]);
+  if(!Number.isFinite(h0) || !Number.isFinite(m0)) return null;
+  let h = h0;
+  const ap = String(ampm).toUpperCase();
+  if(ap === "PM" && h !== 12) h += 12;
+  if(ap === "AM" && h === 12) h = 0;
+  return h * 60 + m0;
 }
-function normalizeDay(v){
-  v=String(v??"").trim();
-  // نقبل أكثر من كتابة بسيطة (اختياري)
-  const map={
-    "الاثنين":"الإثنين",
-    "الاثنين ":"الإثنين",
-    "الاثنين\t":"الإثنين",
-    "الإثنين":"الإثنين",
-    "الاحد":"الأحد",
-    "الأحد":"الأحد",
-    "الثلاثاء":"الثلاثاء",
-    "الاربعاء":"الأربعاء",
-    "الأربعاء":"الأربعاء",
-    "الخميس":"الخميس",
-    "الجمعة":"الجمعة",
-    "السبت":"السبت"
+function isOpenNow(p){
+  const now = new Date();
+  const n = now.getHours() * 60 + now.getMinutes();
+  const o = toMinutes(p.open, p.open_ampm);
+  const c = toMinutes(p.close, p.close_ampm);
+  if(o === null || c === null) return false;
+  if(o < c) return (n >= o && n < c);
+  return (n >= o || n < c);
+}
+
+/* =========================
+   Supabase REST Helpers
+========================= */
+async function sbFetch(path, options={}){
+  const headers = {
+    apikey: SUPABASE_KEY,
+    Authorization: `Bearer ${SUPABASE_KEY}`,
+    ...options.headers
   };
-  return map[v] || v;
-}
-
-/* Arabic date */
-function getTodayArabic(){
-  const d=new Date();
-  const days=["الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
-  const dayName=days[d.getDay()];
-  const dd=String(d.getDate()).padStart(2,"0");
-  const mm=String(d.getMonth()+1).padStart(2,"0");
-  const yyyy=d.getFullYear();
-  return { dayName, dateText:`${dd}/${mm}/${yyyy}` };
-}
-
-/* time */
-function toMin(t,a){
-  const parts=String(t).split(":");
-  if(parts.length!==2) return null;
-  let h=+parts[0], m=+parts[1];
-  if(!Number.isFinite(h)||!Number.isFinite(m)) return null;
-  a=String(a).toUpperCase();
-  if(a==="PM" && h!==12) h+=12;
-  if(a==="AM" && h===12) h=0;
-  return h*60+m;
-}
-function isOpen(p){
-  const n=new Date();
-  const now=n.getHours()*60+n.getMinutes();
-  const o=toMin(p.open,p.open_ampm);
-  const c=toMin(p.close,p.close_ampm);
-  if(o===null||c===null) return false;
-  return c<o ? (now>=o||now<c) : (now>=o && now<c);
-}
-
-/* REST helper */
-async function sbFetch(path, opt={}){
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`,{
-    ...opt,
-    headers:{
-      apikey:API_KEY,
-      Authorization:`Bearer ${API_KEY}`,
-      ...(opt.headers||{})
-    }
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...options,
+    headers
   });
-  let text = "";
-  try{ text = await res.text(); }catch(_){}
-  let data = null;
-  try{ data = text ? JSON.parse(text) : null; }catch(_){ data = text; }
   if(!res.ok){
-    const msg = (data && (data.message||data.error||data.details)) ? (data.message||data.error||data.details) : `HTTP ${res.status}`;
-    throw new Error(msg);
+    const txt = await res.text().catch(()=> "");
+    throw new Error(`Supabase error ${res.status}: ${txt || res.statusText}`);
   }
-  return data;
+  const ct = res.headers.get("content-type") || "";
+  if(ct.includes("application/json")) return await res.json();
+  return await res.text();
 }
 
-/* render public (TODAY ONLY) */
-function render(){
-  const today = getTodayArabic();
-  const todayName = today.dayName;
+/* =========================
+   Public UI
+========================= */
+let pharmacies = [];
+let currentFilter = "open";
+const listEl = document.getElementById("list");
+const searchInput = document.getElementById("searchInput");
+const publicWrapper = document.getElementById("publicWrapper");
+const todayBadge = document.getElementById("todayBadge");
 
-  document.getElementById("todayTitle").textContent = `الصيدليات المناوبة اليوم — ${todayName}`;
+function renderPublic(){
+  const q = searchInput.value.trim().toLowerCase();
+  const tISO = todayISO();
+  todayBadge.textContent = formatArabicDateLabel(tISO);
 
-  const q=searchInput.value.toLowerCase().trim();
-
-  // ✅ فلترة: اليوم فقط
   let items = pharmacies
-    .filter(p => normalizeDay(p.duty_day) === todayName)
-    .filter(p => String(p.pharmacy??"").toLowerCase().includes(q))
-    .map(p=>({...p,_o:isOpen(p)}));
+    .filter(p => normalizeDate(p.duty_date) === tISO)
+    .filter(p => String(p.pharmacy ?? "").toLowerCase().includes(q))
+    .map(p => ({...p, __open: isOpenNow(p)}));
 
-  if(filter==="open") items=items.filter(p=>p._o);
-  if(filter==="closed") items=items.filter(p=>!p._o);
+  if(currentFilter === "open") items = items.filter(p => p.__open);
+  if(currentFilter === "closed") items = items.filter(p => !p.__open);
 
-  // ترتيب: المفتوح أولاً ثم الاسم
-  items.sort((a,b)=> (b._o - a._o) || String(a.pharmacy||"").localeCompare(String(b.pharmacy||""),"ar"));
+  items.sort((a,b) => (b.__open - a.__open) || String(a.pharmacy).localeCompare(String(b.pharmacy), "ar"));
 
-  list.innerHTML = items.length ? items.map(p=>`
-    <div class="card">
-      <div class="card-top">
-        <div>
-          <b>${esc(p.pharmacy)}</b>
-          <div class="meta">📍 ${esc(p.address||"—")}</div>
-          <div class="meta">📞 ${esc(p.phone||"—")}</div>
-          <div class="meta">🗓️ ${esc(normalizeDay(p.duty_day)||"—")}</div>
-        </div>
-        <span class="badge ${p._o?"open":"closed"}">${p._o?"مفتوحة الآن":"مغلقة الآن"}</span>
-      </div>
-      <div class="meta" style="margin-top:8px">⏰ ${esc(p.open)} ${esc(p.open_ampm)} — ${esc(p.close)} ${esc(p.close_ampm)}</div>
-    </div>
-  `).join("") : `<div class="empty">لا توجد صيدليات مناوبة لهذا اليوم.</div>`;
-}
-
-/* load */
-async function load(){
-  try{
-    const data = await sbFetch(`${TABLE}?select=*`);
-    pharmacies = Array.isArray(data) ? data : [];
-  }catch(e){
-    pharmacies=[];
-    toast("فشل تحميل البيانات من Supabase");
-    console.error(e);
+  if(items.length === 0){
+    listEl.innerHTML = `<div class="empty">لا توجد صيدليات لهذا التاريخ الآن.</div>`;
+    return;
   }
 
-  // تاريخ الزاوية
-  const t=getTodayArabic();
-  document.getElementById("dateBox").innerHTML = `📅 <span>${t.dayName}</span> <span class="mut">${t.dateText}</span>`;
+  listEl.innerHTML = items.map(p => {
+    const status = p.__open
+      ? `<div class="statusRect statusOpen">مفتوحة الآن</div>`
+      : `<div class="statusRect statusClosed">مغلقة الآن</div>`;
 
-  document.getElementById("loading").style.display="none";
-  render();
-  drawAdmin();
+    const tel = p.phone ? `<a class="chip" href="tel:${escapeHtml(p.phone)}">📞 اتصال</a>` : "";
+
+    return `
+      <div class="card">
+        <div class="card-top">
+          <div>
+            <h3>${escapeHtml(p.pharmacy)}</h3>
+            <div class="meta">📍 ${escapeHtml(p.address || "—")}</div>
+            <div class="meta">📞 ${escapeHtml(p.phone || "—")}</div>
+          </div>
+          ${status}
+        </div>
+        <div class="actions">${tel}</div>
+      </div>
+    `;
+  }).join("");
 }
 
-/* filters */
-filters.onclick=e=>{
-  const b=e.target.closest("button[data-f]");
-  if(!b) return;
-  filters.querySelectorAll("button").forEach(x=>x.classList.remove("active"));
-  b.classList.add("active");
-  filter=b.dataset.f;
-  render();
-};
-searchInput.oninput=render;
+/* Filters */
+document.getElementById("filters").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-filter]");
+  if(!btn) return;
+  document.querySelectorAll("#filters button").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  currentFilter = btn.dataset.filter;
+  renderPublic();
+});
+searchInput.addEventListener("input", renderPublic);
 
-/* auto refresh open/close every minute (public only) */
-setInterval(()=> {
-  if(!document.getElementById("adminModal").classList.contains("hidden")) return;
-  render();
-}, 60000);
+setInterval(() => {
+  if(!adminModal.classList.contains("hidden")) return;
+  renderPublic();
+}, 60 * 1000);
 
-/* login/admin */
-lockBtn.onclick=()=>loginModal.classList.remove("hidden");
-function closeLogin(){loginModal.classList.add("hidden")}
-function login(){
-  loginErr.classList.add("hidden");
-  if(loginUser.value===ADMIN_USER && loginPass.value===ADMIN_PASS){
-    loginModal.classList.add("hidden");
-    publicWrapper.classList.add("hidden");
-    adminModal.classList.remove("hidden");
+/* =========================
+   Admin Modals
+========================= */
+const lockBtn = document.getElementById("lockBtn");
+const loginModal = document.getElementById("loginModal");
+const adminModal = document.getElementById("adminModal");
+const loginUser = document.getElementById("loginUser");
+const loginPass = document.getElementById("loginPass");
+const loginErr = document.getElementById("loginErr");
+
+const ADMIN_SESSION_KEY = "amuda_admin_session_v3_date";
+
+function setSession(on){
+  if(on) sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+  else sessionStorage.removeItem(ADMIN_SESSION_KEY);
+}
+function isAuthed(){
+  return sessionStorage.getItem(ADMIN_SESSION_KEY) === "1";
+}
+function showLogin(){
+  loginErr.style.display = "none";
+  loginUser.value = "";
+  loginPass.value = "";
+  loginModal.classList.remove("hidden");
+  setTimeout(() => loginUser.focus(), 0);
+}
+function hideLogin(){
+  loginModal.classList.add("hidden");
+}
+function showAdmin(){
+  publicWrapper.classList.add("hidden");
+  adminModal.classList.remove("hidden");
+  resetForm();
+  drawAdminTable();
+}
+function hideAdmin(){
+  adminModal.classList.add("hidden");
+  publicWrapper.classList.remove("hidden");
+  renderPublic();
+}
+
+lockBtn.addEventListener("click", () => {
+  if(isAuthed()) showAdmin();
+  else showLogin();
+});
+
+document.getElementById("loginCloseBtn").addEventListener("click", hideLogin);
+document.getElementById("loginCancelBtn").addEventListener("click", hideLogin);
+document.getElementById("loginBtn").addEventListener("click", () => {
+  const u = loginUser.value.trim();
+  const p = loginPass.value;
+  if(u === ADMIN_USER && p === ADMIN_PASS){
+    setSession(true);
+    hideLogin();
+    showAdmin();
     toast("تم تسجيل الدخول ✅");
   }else{
-    loginErr.classList.remove("hidden");
+    loginErr.style.display = "block";
   }
-}
-function logout(){
-  adminModal.classList.add("hidden");
-  publicWrapper.classList.remove("hidden");
-  toast("تم تسجيل الخروج");
-  render();
-}
-function closeAdmin(){
-  adminModal.classList.add("hidden");
-  publicWrapper.classList.remove("hidden");
-  render();
-}
+});
 
-/* admin table (ALL DAYS) */
-function drawAdmin(){
-  adminTable.innerHTML =
-    `<tr>
+document.getElementById("adminCloseBtn").addEventListener("click", hideAdmin);
+document.getElementById("adminLogoutBtn").addEventListener("click", () => {
+  setSession(false);
+  hideAdmin();
+  toast("تم تسجيل الخروج");
+});
+
+document.addEventListener("keydown", (e) => {
+  if(e.key !== "Escape") return;
+  if(!adminModal.classList.contains("hidden")) hideAdmin();
+  else if(!loginModal.classList.contains("hidden")) hideLogin();
+});
+
+/* =========================
+   Admin: Add / Edit / Delete + Excel replace
+========================= */
+const adminTable = document.getElementById("adminTable");
+const excelFile = document.getElementById("excelFile");
+const clearDataBtn = document.getElementById("clearDataBtn");
+
+const formTitle = document.getElementById("formTitle");
+const formHint = document.getElementById("formHint");
+const f_pharmacy = document.getElementById("f_pharmacy");
+const f_duty_date = document.getElementById("f_duty_date");
+const f_address = document.getElementById("f_address");
+const f_phone = document.getElementById("f_phone");
+const f_open = document.getElementById("f_open");
+const f_openAmpm = document.getElementById("f_openAmpm");
+const f_close = document.getElementById("f_close");
+const f_closeAmpm = document.getElementById("f_closeAmpm");
+const saveBtn = document.getElementById("saveBtn");
+const cancelEditBtn = document.getElementById("cancelEditBtn");
+
+let editingId = null;
+
+function resetForm(){
+  editingId = null;
+  formTitle.textContent = "إضافة صيدلية";
+  formHint.textContent = "";
+  f_pharmacy.value = "";
+  f_duty_date.value = "";
+  f_address.value = "";
+  f_phone.value = "";
+  f_open.value = "";
+  f_openAmpm.value = "AM";
+  f_close.value = "";
+  f_closeAmpm.value = "PM";
+  saveBtn.textContent = "حفظ";
+}
+cancelEditBtn.addEventListener("click", () => {
+  resetForm();
+  toast("تم إلغاء التعديل");
+});
+
+function drawAdminTable(){
+  const rowsSorted = [...pharmacies].sort((a,b) => {
+    const da = normalizeDate(a.duty_date) || "";
+    const db = normalizeDate(b.duty_date) || "";
+    if(da !== db) return da.localeCompare(db);
+    return String(a.pharmacy||"").localeCompare(String(b.pharmacy||""), "ar");
+  });
+
+  const rows = rowsSorted.map(p => {
+    const duty = normalizeDate(p.duty_date) || "—";
+    const openNow = (normalizeDate(p.duty_date) === todayISO()) ? isOpenNow(p) : false;
+    const state = openNow ? `<span style="color:var(--green-dark);font-weight:900">مفتوحة</span>` : `<span style="color:var(--danger);font-weight:900">مغلقة</span>`;
+    return `
+      <tr>
+        <td>${escapeHtml(p.pharmacy)}</td>
+        <td>${escapeHtml(duty)}</td>
+        <td>${escapeHtml(p.address || "")}</td>
+        <td>${escapeHtml(p.phone || "")}</td>
+        <td>${escapeHtml(p.open || "")} ${escapeHtml(normalizeAmpm(p.open_ampm))}<br>${escapeHtml(p.close || "")} ${escapeHtml(normalizeAmpm(p.close_ampm))}</td>
+        <td>${state}</td>
+        <td>
+          <div class="tblBtns">
+            <button class="btn small primary" data-act="edit" data-id="${escapeHtml(p.id)}" type="button">تعديل</button>
+            <button class="btn small danger" data-act="del" data-id="${escapeHtml(p.id)}" type="button">حذف</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  adminTable.innerHTML = `
+    <tr>
       <th>اسم الصيدلية</th>
-      <th>اليوم</th>
+      <th>التاريخ</th>
+      <th>العنوان</th>
       <th>الهاتف</th>
       <th>الدوام</th>
       <th>الحالة</th>
-      <th>حذف</th>
-    </tr>` +
-    pharmacies.map(p=>{
-      const st=isOpen(p);
-      return `<tr>
-        <td>${esc(p.pharmacy||"")}</td>
-        <td>${esc(normalizeDay(p.duty_day)||"—")}</td>
-        <td>${esc(p.phone||"")}</td>
-        <td>${esc(p.open||"")} ${esc(p.open_ampm||"")}<br>${esc(p.close||"")} ${esc(p.close_ampm||"")}</td>
-        <td><span class="badge ${st?"open":"closed"}">${st?"مفتوحة":"مغلقة"}</span></td>
-        <td><button class="btn danger small" type="button" onclick="delPh('${esc(p.id)}')">حذف</button></td>
-      </tr>`;
-    }).join("");
+      <th>إجراءات</th>
+    </tr>
+    ${rows || `<tr><td colspan="7" style="color:var(--muted);padding:14px">لا يوجد بيانات بعد.</td></tr>`}
+  `;
 }
 
-async function delPh(id){
+adminTable.addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-act]");
+  if(!btn) return;
+
+  const act = btn.dataset.act;
+  const id = btn.dataset.id;
+
+  const idx = pharmacies.findIndex(x => String(x.id) === String(id));
+  if(idx === -1){
+    toast("حدث خطأ: لم يتم العثور على السجل");
+    drawAdminTable();
+    return;
+  }
+  const p = pharmacies[idx];
+
+  if(act === "edit"){
+    editingId = String(id);
+    formTitle.textContent = "تعديل صيدلية";
+    formHint.textContent = "عدّل البيانات ثم اضغط حفظ.";
+    f_pharmacy.value = p.pharmacy || "";
+    f_duty_date.value = normalizeDate(p.duty_date) || "";
+    f_address.value = p.address || "";
+    f_phone.value = p.phone || "";
+    f_open.value = p.open || "";
+    f_openAmpm.value = normalizeAmpm(p.open_ampm);
+    f_close.value = p.close || "";
+    f_closeAmpm.value = normalizeAmpm(p.close_ampm);
+    saveBtn.textContent = "حفظ التعديل";
+    toast("وضع التعديل جاهز");
+  }
+
+  if(act === "del"){
+    const ok = confirm("متأكد بدك تحذف هالصيدلية؟");
+    if(!ok) return;
+    deletePharmacy(id);
+  }
+});
+
+async function deletePharmacy(id){
   try{
-    await sbFetch(`${TABLE}?id=eq.${encodeURIComponent(id)}`,{method:"DELETE"});
-    toast("تم الحذف ✅");
-    await load();
-  }catch(e){
-    toast("فشل الحذف");
-    console.error(e);
-    alert("فشل الحذف:\n" + e.message);
+    await sbFetch(`${TABLE}?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
+    toast("تم الحذف");
+    await loadFromSupabase();
+    if(editingId === String(id)) resetForm();
+  }catch(err){
+    console.error(err);
+    alert("فشل الحذف من قاعدة البيانات.");
   }
 }
 
-/* add pharmacy */
-async function addPharmacy(){
-  const pharmacy = f_pharmacy.value.trim();
-  const address  = f_address.value.trim();
-  const phone    = f_phone.value.trim();
-  const duty_day = normalizeDay(f_duty_day.value);
-  const open     = normTime(f_open.value);
-  const close    = normTime(f_close.value);
-  const open_ampm = normAmpm(f_open_ampm.value);
-  const close_ampm = normAmpm(f_close_ampm.value);
+saveBtn.addEventListener("click", async () => {
+  const pharmacy = String(f_pharmacy.value).trim();
+  const duty_date = normalizeDate(f_duty_date.value);
+  const address = String(f_address.value).trim();
+  const phone = String(f_phone.value).trim();
+  const open = normalizeTime(f_open.value);
+  const close = normalizeTime(f_close.value);
+  const open_ampm = normalizeAmpm(f_openAmpm.value);
+  const close_ampm = normalizeAmpm(f_closeAmpm.value);
 
-  if(!pharmacy){ toast("أدخل اسم الصيدلية"); return; }
-  if(!duty_day){ toast("اختر يوم المناوبة"); return; }
-  if(!open || !close){ toast("أدخل وقت صحيح 12 ساعة مثل 10:00"); return; }
+  if(!pharmacy){
+    formHint.textContent = "رجاءً أدخل اسم الصيدلية.";
+    return;
+  }
+  if(!duty_date){
+    formHint.textContent = "رجاءً أدخل تاريخ صحيح بصيغة YYYY-MM-DD.";
+    return;
+  }
+  if(!open || !close){
+    formHint.textContent = "رجاءً أدخل وقت فتح/إغلاق صحيح (مثال 10:00) وبنظام 12 ساعة.";
+    return;
+  }
+
+  const payload = { pharmacy, address, phone, duty_date, open, open_ampm, close, close_ampm };
 
   try{
-    await sbFetch(`${TABLE}`,{
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json",
-        "Prefer":"return=representation"
-      },
-      body:JSON.stringify({ pharmacy,address,phone,duty_day,open,open_ampm,close,close_ampm })
-    });
+    if(editingId){
+      await sbFetch(`${TABLE}?id=eq.${encodeURIComponent(editingId)}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Prefer": "return=representation"
+        },
+        body: JSON.stringify(payload)
+      });
+      toast("تم حفظ التعديل ✅");
+    }else{
+      await sbFetch(`${TABLE}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Prefer": "return=representation"
+        },
+        body: JSON.stringify(payload)
+      });
+      toast("تمت الإضافة ✅");
+    }
 
-    toast("تم الحفظ ✅");
-    f_pharmacy.value=""; f_address.value=""; f_phone.value="";
-    f_duty_day.value="";
-    f_open.value=""; f_close.value="";
-
-    await load();
-  }catch(e){
-    console.error(e);
-    toast("الحفظ فشل");
-    alert("فشل الحفظ:\n" + e.message);
+    resetForm();
+    await loadFromSupabase();
+  }catch(err){
+    console.error(err);
+    alert("فشل الحفظ في Supabase. تأكد من الأعمدة/الصيغ.");
   }
-}
+});
 
-/* clear all */
-async function clearAll(){
-  const ok = confirm("سيتم حذف السجل بالكامل. متأكد؟");
+clearDataBtn.addEventListener("click", async () => {
+  const ok = confirm("سيتم حذف السجل بالكامل. هل أنت متأكد؟");
   if(!ok) return;
   try{
-    await sbFetch(`${TABLE}?id=neq.0`,{method:"DELETE"});
-    toast("تم مسح السجل ✅");
-    await load();
-  }catch(e){
-    console.error(e);
-    toast("فشل المسح");
-    alert("فشل مسح السجل:\n" + e.message);
+    await sbFetch(`${TABLE}?id=not.is.null`, { method: "DELETE" });
+    toast("تم مسح السجل");
+    resetForm();
+    await loadFromSupabase();
+  }catch(err){
+    console.error(err);
+    alert("فشل مسح السجل.");
   }
-}
+});
 
-/* Excel replace */
-excelFile.onchange=async e=>{
-  const file=e.target.files && e.target.files[0];
+excelFile.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
   if(!file) return;
 
   try{
-    const buf=await file.arrayBuffer();
-    const wb=XLSX.read(buf,{type:"array"});
-    const ws=wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(ws,{defval:""});
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, {type:"array"});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, {defval:""});
 
-    // استبدال كامل
-    await sbFetch(`${TABLE}?id=neq.0`,{method:"DELETE"});
+    const mapped = rows.map(r => {
+      const pharmacy = String(r.pharmacy ?? r["اسم الصيدلية"] ?? "").trim();
+      const address  = String(r.address ?? r["العنوان"] ?? "").trim();
+      const phone    = String(r.phone ?? r["رقم الهاتف"] ?? "").trim();
+      const duty_date = normalizeDate(r.duty_date ?? r["التاريخ"] ?? r["تاريخ"] ?? "");
 
-    for(const r of rows){
-      const obj={
-        pharmacy:String(r.pharmacy??r["اسم الصيدلية"]??"").trim(),
-        address:String(r.address??r["العنوان"]??"").trim(),
-        phone:String(r.phone??r["رقم الهاتف"]??"").trim(),
-        duty_day: normalizeDay(r.duty_day ?? r["يوم المناوبة"] ?? ""),
-        open:normTime(r.open??r["فتح"]??""),
-        open_ampm:normAmpm(r.open_ampm??r.openAmpm??r["فتح AM/PM"]??""),
-        close:normTime(r.close??r["إغلاق"]??r["اغلاق"]??""),
-        close_ampm:normAmpm(r.close_ampm??r.closeAmpm??r["إغلاق AM/PM"]??"")
-      };
+      const open = normalizeTime(r.open ?? r["فتح"] ?? "");
+      const open_ampm = normalizeAmpm(r.open_ampm ?? r["فتح AM/PM"] ?? r["AM/PM فتح"] ?? "");
 
-      if(!obj.pharmacy || !obj.duty_day || !obj.open || !obj.close) continue;
+      const close = normalizeTime(r.close ?? r["إغلاق"] ?? r["اغلاق"] ?? "");
+      const close_ampm = normalizeAmpm(r.close_ampm ?? r["إغلاق AM/PM"] ?? r["AM/PM إغلاق"] ?? r["AM/PM اغلاق"] ?? "");
 
-      await sbFetch(`${TABLE}`,{
-        method:"POST",
-        headers:{
-          "Content-Type":"application/json",
-          "Prefer":"return=representation"
-        },
-        body:JSON.stringify(obj)
-      });
+      return { pharmacy, address, phone, duty_date, open, open_ampm, close, close_ampm };
+    }).filter(x => x.pharmacy && x.duty_date && x.open && x.close);
+
+    if(mapped.length === 0){
+      alert("ما تم العثور على صفوف صالحة. تأكد من الأعمدة وصيغة التاريخ والوقت.");
+      return;
     }
 
-    toast("تم رفع Excel ✅");
-    await load();
+    await sbFetch(`${TABLE}?id=not.is.null`, { method:"DELETE" });
+
+    await sbFetch(`${TABLE}`, {
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Prefer":"return=minimal"
+      },
+      body: JSON.stringify(mapped)
+    });
+
+    toast(`تم رفع Excel ✅ (${mapped.length})`);
+    alert(`تم رفع الملف بنجاح ✅\nعدد السجلات: ${mapped.length}\n(تم استبدال السجل القديم بالكامل)`);
+    await loadFromSupabase();
+    resetForm();
   }catch(err){
     console.error(err);
-    alert("فشل رفع Excel:\n" + err.message);
+    alert("فشل قراءة/رفع ملف Excel. تأكد أنه .xlsx وأن الأعمدة صحيحة (وخاصة duty_date بصيغة YYYY-MM-DD).");
   }finally{
-    excelFile.value="";
+    excelFile.value = "";
   }
-};
+});
 
-load();
+/* =========================
+   Load from Supabase + Loading overlay
+========================= */
+async function loadFromSupabase(){
+  const data = await sbFetch(`${TABLE}?select=*`, { method:"GET" });
+  pharmacies = Array.isArray(data) ? data : [];
+  drawAdminTable();
+  renderPublic();
+}
+
+(function init(){
+  todayBadge.textContent = formatArabicDateLabel(todayISO());
+
+  const loading = document.getElementById("loading");
+  const hardHide = () => {
+    loading.classList.add("hide");
+    setTimeout(()=> loading.style.display="none", 260);
+  };
+
+  const safetyTimer = setTimeout(() => {
+    toast("تعذر التحميل — تحقق من الاتصال");
+    hardHide();
+  }, 7000);
+
+  loadFromSupabase()
+    .catch(err => {
+      console.error(err);
+      toast("فشل تحميل البيانات");
+    })
+    .finally(() => {
+      clearTimeout(safetyTimer);
+      requestAnimationFrame(() => hardHide());
+    });
+})();
 </script>
 </body>
 </html>
