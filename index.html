@@ -1,0 +1,1020 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>الصيدليات المناوبة في عامودا</title>
+
+  <style>
+    :root{
+      --green:#1f9d6a;
+      --green-dark:#167a52;
+      --bg:#f3faf6;
+      --card:#ffffff;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --line:#d1fae5;
+      --danger:#b42318;
+      --shadow:0 10px 26px rgba(0,0,0,.08);
+    }
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Arial}
+    body{margin:0;background:var(--bg);color:var(--text)}
+    .hidden{display:none !important}
+
+    /* ===== Loading Overlay ===== */
+    #loading{
+      position:fixed; inset:0;
+      background:linear-gradient(135deg,var(--green),var(--green-dark));
+      color:#fff;
+      display:flex; align-items:center; justify-content:center;
+      flex-direction:column;
+      z-index:9999;
+      transition:opacity .25s ease;
+    }
+    #loading.hide{opacity:0; pointer-events:none}
+    #loading .pill{font-size:44px}
+    #loading .msg{margin-top:10px; opacity:.95; text-align:center; line-height:1.6}
+
+    /* ===== Layout ===== */
+    #publicWrapper{
+      max-width:760px;
+      margin:auto;
+      padding:24px 16px 110px;
+    }
+    .main-title{
+      text-align:center;
+      font-size:28px;
+      color:var(--green-dark);
+      margin:0 0 18px;
+      font-weight:900;
+      letter-spacing:.2px;
+    }
+
+    /* Search */
+    .search input{
+      width:100%;
+      padding:14px 16px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      font-size:16px;
+      outline:none;
+      background:#fff;
+      box-shadow:0 4px 12px rgba(0,0,0,.06);
+    }
+
+    /* Filters */
+    .filters{
+      display:flex;
+      gap:10px;
+      margin-top:14px;
+    }
+    .filters button{
+      flex:1;
+      padding:10px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:#fff;
+      cursor:pointer;
+      font-size:14px;
+      transition:transform .05s ease, background .15s ease, color .15s ease, border-color .15s ease;
+      user-select:none;
+    }
+    .filters button:active{transform:scale(.99)}
+    .filters button.active{
+      background:var(--green);
+      color:#fff;
+      border-color:var(--green);
+      font-weight:900;
+    }
+
+    .section-title{
+      font-size:20px;
+      margin:22px 0 12px;
+      color:var(--green-dark);
+      font-weight:900;
+    }
+
+    /* Cards */
+    .card{
+      background:var(--card);
+      border-radius:18px;
+      padding:16px;
+      margin-bottom:14px;
+      box-shadow:var(--shadow);
+      border:1px solid rgba(209,250,229,.35);
+    }
+    .card-top{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:10px;
+    }
+    .card h3{
+      margin:0;
+      font-size:18px;
+      font-weight:900;
+    }
+    .meta{
+      font-size:14px;
+      color:var(--muted);
+      margin-top:4px;
+      line-height:1.6;
+    }
+    .badge{
+      display:inline-block;
+      padding:6px 14px;
+      border-radius:999px;
+      font-size:13px;
+      font-weight:900;
+      white-space:nowrap;
+      align-self:flex-start;
+    }
+    .open{background:#e6f7ef;color:var(--green-dark)}
+    .closed{background:#fdeaea;color:var(--danger)}
+    .actions{
+      margin-top:10px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .chip{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:9px 12px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--text);
+      text-decoration:none;
+      font-size:14px;
+    }
+
+    /* Empty state */
+    .empty{
+      background:#fff;
+      border:1px dashed rgba(22,122,82,.25);
+      border-radius:18px;
+      padding:18px;
+      color:var(--muted);
+      text-align:center;
+      box-shadow:0 8px 22px rgba(0,0,0,.05);
+    }
+
+    /* ===== Admin lock (transparent + smaller) ===== */
+    #lockBtn{
+      position:fixed;
+      bottom:18px;
+      left:18px;
+      width:34px;
+      height:34px;
+      border-radius:10px;
+      background:transparent;   /* شفاف تماماً */
+      border:0;
+      padding:0;
+      cursor:pointer;
+      z-index:200;
+      opacity:.28;
+      transition:opacity .15s ease, transform .05s ease;
+    }
+    #lockBtn:hover{opacity:.75}
+    #lockBtn:active{transform:scale(.98)}
+    #lockBtn svg{width:22px;height:22px;display:block;margin:auto;fill:var(--green-dark);}
+
+    /* ===== Modal base ===== */
+    .modal{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.45);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:10000;
+      padding:18px;
+    }
+    .modal.hidden{display:none}
+    .box{
+      width:100%;
+      max-width:920px;
+      background:#fff;
+      border-radius:18px;
+      box-shadow:0 16px 40px rgba(0,0,0,.25);
+      overflow:hidden;
+    }
+    .boxHeader{
+      padding:14px 16px;
+      background:linear-gradient(135deg,var(--green),var(--green-dark));
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .boxHeader h2{margin:0;font-size:16px;font-weight:900}
+    .boxHeader .hdrBtns{display:flex;gap:8px;flex-wrap:wrap}
+    .hdrBtn{
+      background:rgba(255,255,255,.16);
+      color:#fff;
+      border:1px solid rgba(255,255,255,.25);
+      padding:8px 10px;
+      border-radius:12px;
+      cursor:pointer;
+      font-size:13px;
+      user-select:none;
+    }
+    .boxBody{padding:16px}
+
+    .loginBox{
+      max-width:420px;
+      width:100%;
+      background:#fff;
+      border-radius:18px;
+      overflow:hidden;
+      box-shadow:0 16px 40px rgba(0,0,0,.25);
+    }
+    .loginBody{padding:16px}
+
+    .grid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:12px;
+    }
+    @media (min-width:920px){
+      .grid{grid-template-columns:1.12fr .88fr}
+    }
+
+    .panel{
+      background:#fff;
+      border:1px solid rgba(209,250,229,.6);
+      border-radius:16px;
+      padding:14px;
+      box-shadow:0 10px 26px rgba(0,0,0,.06);
+    }
+    .panel h3{margin:0 0 10px;font-size:15px;color:var(--green-dark);font-weight:900}
+    .row{display:flex; gap:10px; flex-wrap:wrap}
+    .field{flex:1; min-width:180px}
+    .field label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px}
+    .field input, .field select{
+      width:100%;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      outline:none;
+      background:#fff;
+      font-size:14px;
+    }
+
+    .btn{
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:#fff;
+      cursor:pointer;
+      font-size:14px;
+      user-select:none;
+    }
+    .btn.primary{
+      background:var(--green);
+      color:#fff;
+      border-color:var(--green);
+      font-weight:900;
+    }
+    .btn.danger{
+      background:#fff;
+      color:var(--danger);
+      border-color:rgba(180,35,24,.25);
+      font-weight:900;
+    }
+    .hint{color:var(--muted); font-size:12px; line-height:1.6; margin-top:8px}
+    .err{color:var(--danger);font-size:13px;margin-top:10px;display:none}
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      overflow:hidden;
+      border-radius:14px;
+      border:1px solid rgba(209,250,229,.7);
+      background:#fff;
+    }
+    th,td{
+      border-bottom:1px solid rgba(209,250,229,.8);
+      padding:9px 8px;
+      font-size:13px;
+      text-align:center;
+      vertical-align:top;
+    }
+    th{background:#eafaf2;color:var(--green-dark);font-weight:900}
+    tr:last-child td{border-bottom:none}
+    .tblBtns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+    .small{font-size:12px;padding:7px 10px;border-radius:10px}
+
+    /* Toast */
+    #toast{
+      position:fixed;
+      top:14px;
+      left:50%;
+      transform:translateX(-50%);
+      background:#111827;
+      color:#fff;
+      padding:10px 14px;
+      border-radius:12px;
+      font-size:13px;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .18s ease, transform .18s ease;
+      z-index:12000;
+    }
+    #toast.show{
+      opacity:1;
+      transform:translateX(-50%) translateY(2px);
+    }
+  </style>
+
+  <!-- Excel reader (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+</head>
+
+<body>
+  <!-- Loading overlay -->
+  <div id="loading">
+    <div class="pill">💊</div>
+    <div class="msg">جاري تحميل الصيدليات...<br>يرجى الانتظار</div>
+  </div>
+
+  <div id="publicWrapper">
+    <h1 class="main-title">الصيدليات المناوبة في عامودا</h1>
+
+    <div class="search">
+      <input id="searchInput" placeholder="🔍 ابحث عن صيدلية بالاسم" autocomplete="off" />
+    </div>
+
+    <!-- ترتيب الفلترة: مفتوحة الآن، مغلقة الآن، الكل -->
+    <div class="filters" id="filters">
+      <button type="button" class="active" data-filter="open">مفتوحة الآن</button>
+      <button type="button" data-filter="closed">مغلقة الآن</button>
+      <button type="button" data-filter="all">الكل</button>
+    </div>
+
+    <div class="section-title">الصيدليات المناوبة الآن</div>
+    <div id="list"></div>
+  </div>
+
+  <!-- Transparent small admin lock -->
+  <button id="lockBtn" aria-label="قسم الأدمن" title="قسم الأدمن">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2zm-7-2a2 2 0 1 1 4 0v2h-4V7zm3.1 9.7-.3.3V18a.8.8 0 0 1-1.6 0v-1l-.3-.3a1.5 1.5 0 1 1 2.2 0z"/>
+    </svg>
+  </button>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <!-- Login modal -->
+  <div class="modal hidden" id="loginModal">
+    <div class="loginBox">
+      <div class="boxHeader">
+        <h2>دخول الأدمن</h2>
+        <div class="hdrBtns">
+          <button class="hdrBtn" id="loginCloseBtn" type="button">إلغاء</button>
+        </div>
+      </div>
+      <div class="loginBody">
+        <div class="field">
+          <label>اسم المستخدم</label>
+          <input id="loginUser" autocomplete="username" />
+        </div>
+        <div class="field" style="margin-top:10px">
+          <label>كلمة المرور</label>
+          <input id="loginPass" type="password" autocomplete="current-password" />
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn primary" id="loginBtn" type="button" style="flex:1;min-width:140px">دخول</button>
+          <button class="btn" id="loginCancelBtn" type="button" style="flex:1;min-width:140px">إلغاء</button>
+        </div>
+        <div class="err" id="loginErr">بيانات الدخول غير صحيحة</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin modal -->
+  <div class="modal hidden" id="adminModal">
+    <div class="box">
+      <div class="boxHeader">
+        <h2>لوحة الأدمن — إدارة الصيدليات</h2>
+        <div class="hdrBtns">
+          <button class="hdrBtn" id="adminLogoutBtn" type="button">تسجيل خروج</button>
+          <button class="hdrBtn" id="adminCloseBtn" type="button">إغلاق</button>
+        </div>
+      </div>
+
+      <div class="boxBody">
+        <div class="grid">
+          <!-- Left: table -->
+          <div class="panel">
+            <h3>سجل الصيدليات</h3>
+            <div class="hint">يمكنك تعديل/حذف أي صيدلية، أو رفع ملف Excel شهريًا لاستبدال السجل بالكامل.</div>
+            <div style="margin-top:12px; overflow:auto;">
+              <table id="adminTable"></table>
+            </div>
+          </div>
+
+          <!-- Right: actions + form -->
+          <div class="panel">
+            <h3>رفع Excel شهريًا (استبدال كامل)</h3>
+            <div class="row">
+              <input id="excelFile" type="file" accept=".xlsx,.xls" class="btn" style="flex:1;min-width:220px" />
+              <button class="btn danger" id="clearDataBtn" type="button" style="min-width:160px">مسح السجل</button>
+            </div>
+            <div class="hint">
+              الأعمدة المفضلة في Excel:
+              <br><b>pharmacy</b>, <b>name</b>, <b>address</b>, <b>phone</b>, <b>open</b>, <b>openAmpm</b>, <b>close</b>, <b>closeAmpm</b>
+              <br>أو بالعربي: <b>اسم الصيدلية</b>, <b>الاسم</b>, <b>العنوان</b>, <b>رقم الهاتف</b>, <b>فتح</b>, <b>فتح AM/PM</b>, <b>إغلاق</b>, <b>إغلاق AM/PM</b>
+              <br>الوقت بنظام 12 ساعة مثل: <b>10:00</b> مع <b>AM</b> أو <b>PM</b>
+            </div>
+
+            <hr style="border:none;border-top:1px solid rgba(209,250,229,.9); margin:14px 0;">
+
+            <h3 id="formTitle">إضافة صيدلية</h3>
+
+            <div class="row">
+              <div class="field" style="flex:1.2;min-width:220px">
+                <label>اسم الصيدلية</label>
+                <input id="f_pharmacy" placeholder="مثال: صيدلية الشفاء" />
+              </div>
+              <div class="field" style="flex:1;min-width:200px">
+                <label>الاسم</label>
+                <input id="f_name" placeholder="مثال: د. أحمد" />
+              </div>
+            </div>
+
+            <div class="row" style="margin-top:10px">
+              <div class="field" style="flex:1.2;min-width:220px">
+                <label>العنوان</label>
+                <input id="f_address" placeholder="عامودا - ..." />
+              </div>
+              <div class="field" style="flex:1;min-width:200px">
+                <label>رقم الهاتف</label>
+                <input id="f_phone" placeholder="09xxxxxxxx" />
+              </div>
+            </div>
+
+            <div class="row" style="margin-top:10px">
+              <div class="field">
+                <label>ساعة الفتح</label>
+                <input id="f_open" placeholder="10:00" />
+              </div>
+              <div class="field" style="min-width:120px">
+                <label>AM/PM</label>
+                <select id="f_openAmpm">
+                  <option>AM</option>
+                  <option>PM</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>ساعة الإغلاق</label>
+                <input id="f_close" placeholder="03:00" />
+              </div>
+              <div class="field" style="min-width:120px">
+                <label>AM/PM</label>
+                <select id="f_closeAmpm">
+                  <option>AM</option>
+                  <option selected>PM</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row" style="margin-top:12px">
+              <button class="btn primary" id="saveBtn" type="button" style="flex:1;min-width:160px">حفظ</button>
+              <button class="btn" id="cancelEditBtn" type="button" style="flex:1;min-width:160px">إلغاء التعديل</button>
+            </div>
+
+            <div class="hint" id="formHint"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* =========================
+   إعدادات
+========================= */
+const STORAGE_KEY = "amuda_pharmacies_v2";
+const ADMIN_SESSION_KEY = "amuda_admin_session_v2";
+
+/* بيانات الأدمن */
+const ADMIN_USER = "amuda.br";
+const ADMIN_PASS = "@Bb300300";
+
+/* =========================
+   أدوات
+========================= */
+function escapeHtml(s){
+  return String(s ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function normalizeAmpm(v){
+  const s = String(v ?? "").trim().toUpperCase();
+  return (s === "PM") ? "PM" : "AM";
+}
+function normalizeTime(v){
+  const s = String(v ?? "").trim();
+  const m = s.match(/^(\d{1,2})(?::(\d{1,2}))?$/);
+  if(!m) return "";
+  let hh = Number(m[1]);
+  let mm = Number(m[2] ?? 0);
+  if(!Number.isFinite(hh) || !Number.isFinite(mm)) return "";
+  if(hh < 1 || hh > 12) return "";
+  if(mm < 0 || mm > 59) return "";
+  return String(hh).padStart(2,"0") + ":" + String(mm).padStart(2,"0");
+}
+function uid(){
+  // آمن وموحد
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return "id_" + Math.random().toString(16).slice(2) + "_" + Date.now();
+}
+const toastEl = document.getElementById("toast");
+let toastTimer = null;
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> toastEl.classList.remove("show"), 1800);
+}
+
+/* =========================
+   منطق الوقت (12 ساعة AM/PM)
+========================= */
+function toMinutes(t, ampm){
+  const parts = String(t).split(":");
+  if(parts.length !== 2) return null;
+  const h0 = Number(parts[0]);
+  const m0 = Number(parts[1]);
+  if(!Number.isFinite(h0) || !Number.isFinite(m0)) return null;
+  let h = h0;
+  const ap = String(ampm).toUpperCase();
+  if(ap === "PM" && h !== 12) h += 12;
+  if(ap === "AM" && h === 12) h = 0;
+  return h * 60 + m0;
+}
+function isOpenNow(p){
+  const now = new Date();
+  const n = now.getHours() * 60 + now.getMinutes();
+  const o = toMinutes(p.open, p.openAmpm);
+  const c = toMinutes(p.close, p.closeAmpm);
+  if(o === null || c === null) return false;
+
+  // نفس اليوم
+  if(o < c) return (n >= o && n < c);
+  // مناوبة ليلية
+  return (n >= o || n < c);
+}
+
+/* =========================
+   البيانات
+========================= */
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return [];
+    const arr = JSON.parse(raw);
+    if(!Array.isArray(arr)) return [];
+    return arr.map(x => ({
+      id: String(x.id ?? uid()),
+      pharmacy: String(x.pharmacy ?? "").trim(),
+      name: String(x.name ?? "").trim(),
+      address: String(x.address ?? "").trim(),
+      phone: String(x.phone ?? "").trim(),
+      open: String(x.open ?? "").trim(),
+      openAmpm: normalizeAmpm(x.openAmpm),
+      close: String(x.close ?? "").trim(),
+      closeAmpm: normalizeAmpm(x.closeAmpm),
+    })).filter(x => x.pharmacy);
+  }catch(_e){
+    return [];
+  }
+}
+function saveData(arr){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+}
+
+/* =========================
+   واجهة الزوار
+========================= */
+let pharmacies = [];
+let currentFilter = "open"; // الافتراضي: مفتوحة الآن
+const listEl = document.getElementById("list");
+const searchInput = document.getElementById("searchInput");
+const publicWrapper = document.getElementById("publicWrapper");
+
+function renderPublic(){
+  const q = searchInput.value.trim().toLowerCase();
+
+  let items = pharmacies
+    .filter(p => p.pharmacy.toLowerCase().includes(q))
+    .map(p => ({...p, __open: isOpenNow(p)}));
+
+  if(currentFilter === "open") items = items.filter(p => p.__open);
+  if(currentFilter === "closed") items = items.filter(p => !p.__open);
+
+  // ترتيب: المفتوح أولاً دائماً، ثم الاسم
+  items.sort((a,b) => (b.__open - a.__open) || a.pharmacy.localeCompare(b.pharmacy, "ar"));
+
+  if(items.length === 0){
+    listEl.innerHTML = `<div class="empty">لا توجد صيدليات مطابقة الآن.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = items.map(p => {
+    const badge = p.__open
+      ? `<span class="badge open">مفتوحة الآن</span>`
+      : `<span class="badge closed">مغلقة الآن</span>`;
+
+    const tel = p.phone ? `<a class="chip" href="tel:${escapeHtml(p.phone)}">📞 اتصال</a>` : "";
+
+    return `
+      <div class="card">
+        <div class="card-top">
+          <div>
+            <h3>${escapeHtml(p.pharmacy)}</h3>
+            ${p.name ? `<div class="meta">👤 ${escapeHtml(p.name)}</div>` : ``}
+          </div>
+          ${badge}
+        </div>
+        <div class="meta">📍 ${escapeHtml(p.address || "—")}</div>
+        <div class="meta">📞 ${escapeHtml(p.phone || "—")}</div>
+        <div class="actions">${tel}</div>
+      </div>
+    `;
+  }).join("");
+}
+
+/* فلاتر */
+document.getElementById("filters").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-filter]");
+  if(!btn) return;
+  document.querySelectorAll("#filters button").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  currentFilter = btn.dataset.filter;
+  renderPublic();
+});
+searchInput.addEventListener("input", renderPublic);
+
+/* تحديث الحالة تلقائيًا كل دقيقة */
+setInterval(() => {
+  // ما رح نحدث إذا الأدمن مفتوح لتقليل أي تداخل بصري
+  if(!adminModal.classList.contains("hidden")) return;
+  renderPublic();
+}, 60 * 1000);
+
+/* =========================
+   مودالات الأدمن
+========================= */
+const lockBtn = document.getElementById("lockBtn");
+const loginModal = document.getElementById("loginModal");
+const adminModal = document.getElementById("adminModal");
+const loginUser = document.getElementById("loginUser");
+const loginPass = document.getElementById("loginPass");
+const loginErr = document.getElementById("loginErr");
+
+function setSession(on){
+  if(on) sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+  else sessionStorage.removeItem(ADMIN_SESSION_KEY);
+}
+function isAuthed(){
+  return sessionStorage.getItem(ADMIN_SESSION_KEY) === "1";
+}
+
+function showLogin(){
+  loginErr.style.display = "none";
+  loginUser.value = "";
+  loginPass.value = "";
+  loginModal.classList.remove("hidden");
+  setTimeout(() => loginUser.focus(), 0);
+}
+function hideLogin(){
+  loginModal.classList.add("hidden");
+}
+function showAdmin(){
+  // إخفاء قسم الصيدليات بالخلف مثل ما طلبت
+  publicWrapper.classList.add("hidden");
+  adminModal.classList.remove("hidden");
+  resetForm();
+  drawAdminTable();
+}
+function hideAdmin(){
+  adminModal.classList.add("hidden");
+  publicWrapper.classList.remove("hidden");
+  // إعادة رندر لواجهة الزوار بعد إغلاق الأدمن
+  renderPublic();
+}
+
+/* فتح القفل */
+lockBtn.addEventListener("click", () => {
+  if(isAuthed()) showAdmin();
+  else showLogin();
+});
+
+/* أزرار login */
+document.getElementById("loginCloseBtn").addEventListener("click", hideLogin);
+document.getElementById("loginCancelBtn").addEventListener("click", hideLogin);
+document.getElementById("loginBtn").addEventListener("click", () => {
+  const u = loginUser.value.trim();
+  const p = loginPass.value;
+  if(u === ADMIN_USER && p === ADMIN_PASS){
+    setSession(true);
+    hideLogin();
+    showAdmin();
+    toast("تم تسجيل الدخول ✅");
+  }else{
+    loginErr.style.display = "block";
+  }
+});
+
+/* أزرار admin */
+document.getElementById("adminCloseBtn").addEventListener("click", hideAdmin);
+document.getElementById("adminLogoutBtn").addEventListener("click", () => {
+  setSession(false);
+  hideAdmin();
+  toast("تم تسجيل الخروج");
+});
+
+/* ESC */
+document.addEventListener("keydown", (e) => {
+  if(e.key !== "Escape") return;
+  if(!adminModal.classList.contains("hidden")) hideAdmin();
+  else if(!loginModal.classList.contains("hidden")) hideLogin();
+});
+
+/* =========================
+   لوحة الأدمن: إضافة/تعديل/حذف + Excel شهري
+========================= */
+const adminTable = document.getElementById("adminTable");
+const excelFile = document.getElementById("excelFile");
+const clearDataBtn = document.getElementById("clearDataBtn");
+
+const formTitle = document.getElementById("formTitle");
+const formHint = document.getElementById("formHint");
+const f_pharmacy = document.getElementById("f_pharmacy");
+const f_name = document.getElementById("f_name");
+const f_address = document.getElementById("f_address");
+const f_phone = document.getElementById("f_phone");
+const f_open = document.getElementById("f_open");
+const f_openAmpm = document.getElementById("f_openAmpm");
+const f_close = document.getElementById("f_close");
+const f_closeAmpm = document.getElementById("f_closeAmpm");
+const saveBtn = document.getElementById("saveBtn");
+const cancelEditBtn = document.getElementById("cancelEditBtn");
+
+let editingId = null;
+
+function resetForm(){
+  editingId = null;
+  formTitle.textContent = "إضافة صيدلية";
+  formHint.textContent = "";
+  f_pharmacy.value = "";
+  f_name.value = "";
+  f_address.value = "";
+  f_phone.value = "";
+  f_open.value = "";
+  f_openAmpm.value = "AM";
+  f_close.value = "";
+  f_closeAmpm.value = "PM";
+}
+cancelEditBtn.addEventListener("click", () => {
+  resetForm();
+  toast("تم إلغاء التعديل");
+});
+
+function drawAdminTable(){
+  const rows = pharmacies.map(p => {
+    const openNow = isOpenNow(p);
+    const badge = openNow ? `<span class="open">مفتوحة</span>` : `<span class="closed">مغلقة</span>`;
+    return `
+      <tr>
+        <td>${escapeHtml(p.pharmacy)}</td>
+        <td>${escapeHtml(p.name)}</td>
+        <td>${escapeHtml(p.address)}</td>
+        <td>${escapeHtml(p.phone)}</td>
+        <td>${escapeHtml(p.open)} ${escapeHtml(p.openAmpm)}<br>${escapeHtml(p.close)} ${escapeHtml(p.closeAmpm)}</td>
+        <td>${badge}</td>
+        <td>
+          <div class="tblBtns">
+            <button class="btn small primary" data-act="edit" data-id="${escapeHtml(p.id)}" type="button">تعديل</button>
+            <button class="btn small danger" data-act="del" data-id="${escapeHtml(p.id)}" type="button">حذف</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  adminTable.innerHTML = `
+    <tr>
+      <th>اسم الصيدلية</th>
+      <th>الاسم</th>
+      <th>العنوان</th>
+      <th>الهاتف</th>
+      <th>الدوام</th>
+      <th>الحالة</th>
+      <th>إجراءات</th>
+    </tr>
+    ${rows || `<tr><td colspan="7" style="color:var(--muted);padding:14px">لا يوجد بيانات بعد.</td></tr>`}
+  `;
+}
+
+/* تحسين منطق التعديل: تفويض واحد + فحص وجود ID + إعادة رندر بعد كل عملية */
+adminTable.addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-act]");
+  if(!btn) return;
+
+  const act = btn.dataset.act;
+  const id = btn.dataset.id;
+
+  const idx = pharmacies.findIndex(x => x.id === id);
+  if(idx === -1){
+    toast("حدث خطأ: لم يتم العثور على السجل");
+    drawAdminTable();
+    return;
+  }
+  const p = pharmacies[idx];
+
+  if(act === "edit"){
+    editingId = id;
+    formTitle.textContent = "تعديل صيدلية";
+    formHint.textContent = "عدّل البيانات ثم اضغط حفظ.";
+    f_pharmacy.value = p.pharmacy;
+    f_name.value = p.name;
+    f_address.value = p.address;
+    f_phone.value = p.phone;
+    f_open.value = p.open;
+    f_openAmpm.value = normalizeAmpm(p.openAmpm);
+    f_close.value = p.close;
+    f_closeAmpm.value = normalizeAmpm(p.closeAmpm);
+    toast("وضع التعديل جاهز");
+  }
+
+  if(act === "del"){
+    const ok = confirm("متأكد بدك تحذف هالصيدلية؟");
+    if(!ok) return;
+    pharmacies.splice(idx, 1);
+    saveData(pharmacies);
+    drawAdminTable();
+    if(editingId === id) resetForm();
+    toast("تم الحذف");
+  }
+});
+
+saveBtn.addEventListener("click", () => {
+  const pharmacy = String(f_pharmacy.value).trim();
+  const name = String(f_name.value).trim();
+  const address = String(f_address.value).trim();
+  const phone = String(f_phone.value).trim();
+  const open = normalizeTime(f_open.value);
+  const close = normalizeTime(f_close.value);
+  const openAmpm = normalizeAmpm(f_openAmpm.value);
+  const closeAmpm = normalizeAmpm(f_closeAmpm.value);
+
+  if(!pharmacy){
+    formHint.textContent = "رجاءً أدخل اسم الصيدلية.";
+    return;
+  }
+  if(!open || !close){
+    formHint.textContent = "رجاءً أدخل وقت فتح/إغلاق صحيح (مثال 10:00) وبنظام 12 ساعة.";
+    return;
+  }
+
+  const obj = {
+    id: editingId || uid(),
+    pharmacy, name, address, phone,
+    open, openAmpm, close, closeAmpm
+  };
+
+  if(editingId){
+    const idx = pharmacies.findIndex(x => x.id === editingId);
+    if(idx === -1){
+      // إذا حصل خلل بالـ id، نوقف ونرجع للوضع الآمن
+      editingId = null;
+      formHint.textContent = "حدث خطأ في التعديل. جرّب مرة أخرى.";
+      drawAdminTable();
+      return;
+    }
+    pharmacies[idx] = obj;
+    toast("تم حفظ التعديل ✅");
+  }else{
+    pharmacies.unshift(obj);
+    toast("تمت الإضافة ✅");
+  }
+
+  saveData(pharmacies);
+  drawAdminTable();
+  resetForm();
+});
+
+/* مسح السجل بالكامل */
+clearDataBtn.addEventListener("click", () => {
+  const ok = confirm("سيتم حذف السجل بالكامل. هل أنت متأكد؟");
+  if(!ok) return;
+  pharmacies = [];
+  saveData(pharmacies);
+  drawAdminTable();
+  resetForm();
+  toast("تم مسح السجل");
+});
+
+/* Excel upload شهري: استبدال كامل */
+excelFile.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  if(!file) return;
+
+  try{
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, {type:"array"});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, {defval:""});
+
+    const mapped = rows.map(r => {
+      const pharmacy =
+        String(r.pharmacy ?? "").trim() ||
+        String(r["اسم الصيدلية"] ?? "").trim();
+
+      const name =
+        String(r.name ?? "").trim() ||
+        String(r["الاسم"] ?? "").trim();
+
+      const address =
+        String(r.address ?? "").trim() ||
+        String(r["العنوان"] ?? "").trim();
+
+      const phone =
+        String(r.phone ?? "").trim() ||
+        String(r["رقم الهاتف"] ?? "").trim();
+
+      const open = normalizeTime(r.open ?? r["فتح"] ?? "");
+      const openAmpm = normalizeAmpm(r.openAmpm ?? r["فتح AM/PM"] ?? r["AM/PM فتح"] ?? "");
+
+      const close = normalizeTime(r.close ?? r["إغلاق"] ?? r["اغلاق"] ?? "");
+      const closeAmpm = normalizeAmpm(r.closeAmpm ?? r["إغلاق AM/PM"] ?? r["AM/PM إغلاق"] ?? r["AM/PM اغلاق"] ?? "");
+
+      return {
+        id: uid(),
+        pharmacy, name, address, phone,
+        open: open || "",
+        openAmpm,
+        close: close || "",
+        closeAmpm
+      };
+    }).filter(x => x.pharmacy && x.open && x.close);
+
+    pharmacies = mapped; // استبدال كامل
+    saveData(pharmacies);
+    drawAdminTable();
+    resetForm();
+    toast(`تم رفع Excel ✅ (${pharmacies.length})`);
+    alert(`تم رفع الملف بنجاح ✅\nعدد السجلات: ${pharmacies.length}\n(تم استبدال السجل القديم بالكامل)`);
+  }catch(err){
+    console.error(err);
+    alert("فشل قراءة ملف Excel. تأكد من أنه .xlsx وأن الأعمدة صحيحة والوقت بصيغة 12 ساعة.");
+  }finally{
+    excelFile.value = "";
+  }
+});
+
+/* =========================
+   بدء التشغيل
+========================= */
+(function init(){
+  pharmacies = loadData();
+
+  // إذا ما في بيانات أول مرة، مثالين (يمكن حذفهم من الأدمن)
+  if(pharmacies.length === 0){
+    pharmacies = [
+      {
+        id: uid(),
+        pharmacy: "صيدلية الشفاء",
+        name: "د. أحمد",
+        address: "عامودا - المركز",
+        phone: "09xxxxxxxx",
+        open: "10:00", openAmpm:"AM",
+        close: "03:00", closeAmpm:"PM",
+      },
+      {
+        id: uid(),
+        pharmacy: "صيدلية الرحمة",
+        name: "د. محمد",
+        address: "عامودا - الحي الشرقي",
+        phone: "09xxxxxxxx",
+        open: "08:00", openAmpm:"PM",
+        close: "06:00", closeAmpm:"AM",
+      }
+    ];
+    saveData(pharmacies);
+  }
+
+  renderPublic();
+
+  // إخفاء شاشة التحميل بعد اكتمال الرندر
+  const loading = document.getElementById("loading");
+  requestAnimationFrame(() => {
+    loading.classList.add("hide");
+    setTimeout(() => loading.style.display = "none", 260);
+  });
+})();
+</script>
+</body>
+</html>
