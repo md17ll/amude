@@ -46,30 +46,68 @@ body{margin:0;background:var(--bg)}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(2px)}
 
 /* Public */
-#publicWrapper{max-width:760px;margin:auto;padding:24px 16px 110px}
-.main-title{text-align:center;font-size:28px;color:var(--green-dark);font-weight:900}
+#publicWrapper{max-width:760px;margin:auto;padding:18px 16px 110px}
+.topbar{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start; /* RTL: يبدأ من اليمين */
+  margin-bottom:8px;
+}
+#dateBox{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 12px;
+  border-radius:12px;
+  background:#fff;
+  border:1px solid var(--line);
+  box-shadow:0 6px 16px rgba(0,0,0,.06);
+  color:var(--green-dark);
+  font-weight:900;
+  font-size:13px;
+  user-select:none;
+}
+#dateBox .mut{color:var(--muted);font-weight:700}
+
+.main-title{text-align:center;font-size:28px;color:var(--green-dark);font-weight:900;margin:8px 0 14px}
 .search input{width:100%;padding:14px;border-radius:14px;border:1px solid var(--line);outline:none}
+
 .filters{display:flex;gap:10px;margin-top:14px}
 .filters button{
   flex:1;padding:10px;border-radius:12px;
   border:1px solid var(--line);background:#fff;
-  cursor:pointer;transition:transform .08s ease, background .2s ease, color .2s ease, box-shadow .2s ease
+  cursor:pointer;
+  transition:transform .08s ease, background .2s ease, color .2s ease, box-shadow .2s ease;
 }
 .filters button:active{transform:scale(.98)}
 .filters button.active{
   background:var(--green);color:#fff;font-weight:900;
   box-shadow:0 8px 18px rgba(31,157,106,.28);
 }
+
+.section-title{font-size:18px;margin:18px 0 12px;color:var(--green-dark);font-weight:900}
+
+/* Cards */
 .card{
   background:#fff;border-radius:18px;padding:16px;
   margin-bottom:14px;box-shadow:var(--shadow)
 }
-.card-top{display:flex;justify-content:space-between;gap:10px}
-.badge{padding:6px 14px;border-radius:999px;font-size:13px;font-weight:900;white-space:nowrap}
-.open{background:#e6f7ef;color:var(--green-dark)}
-.closed{background:#fdeaea;color:var(--danger)}
+.card-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+
+/* ✅ status badge as RECTANGLE */
+.badge{
+  padding:7px 12px;
+  border-radius:8px;     /* مستطيل مرتب */
+  font-size:13px;
+  font-weight:900;
+  white-space:nowrap;
+  border:1px solid transparent;
+}
+.open{background:#e6f7ef;color:var(--green-dark);border-color:rgba(22,122,82,.18)}
+.closed{background:#fdeaea;color:var(--danger);border-color:rgba(180,35,24,.18)}
+
 .meta{font-size:14px;color:var(--muted);margin-top:4px;line-height:1.6}
-.empty{text-align:center;color:var(--muted);padding:20px}
+.empty{text-align:center;color:var(--muted);padding:20px;background:#fff;border:1px dashed rgba(22,122,82,.22);border-radius:18px}
 
 /* Lock */
 #lockBtn{
@@ -144,9 +182,15 @@ th{background:#eafaf2}
 <div id="toast"></div>
 
 <div id="publicWrapper">
+  <div class="topbar">
+    <div id="dateBox"></div>
+  </div>
+
   <h1 class="main-title">الصيدليات المناوبة في عامودا</h1>
 
-  <div class="search"><input id="searchInput" placeholder="🔍 ابحث عن صيدلية"></div>
+  <div class="search">
+    <input id="searchInput" placeholder="🔍 ابحث عن صيدلية">
+  </div>
 
   <div class="filters" id="filters">
     <button class="active" data-f="open">مفتوحة الآن</button>
@@ -154,7 +198,8 @@ th{background:#eafaf2}
     <button data-f="all">الكل</button>
   </div>
 
-  <div style="margin-top:14px" id="list"></div>
+  <div class="section-title" id="todayTitle"></div>
+  <div id="list"></div>
 </div>
 
 <button id="lockBtn" title="قسم الأدمن">🔒</button>
@@ -194,9 +239,12 @@ th{background:#eafaf2}
         <div class="row" style="margin-top:6px">
           <button class="btn danger" type="button" onclick="clearAll()">مسح السجل</button>
         </div>
+
         <div class="hint" style="margin-top:10px">
           الأعمدة المطلوبة في Excel:<br>
-          <b>pharmacy</b>, <b>address</b>, <b>phone</b>, <b>open</b>, <b>open_ampm</b>, <b>close</b>, <b>close_ampm</b><br>
+          <b>pharmacy</b>, <b>address</b>, <b>phone</b>, <b>duty_day</b>, <b>open</b>, <b>open_ampm</b>, <b>close</b>, <b>close_ampm</b><br>
+          أو بالعربي:<br>
+          <b>اسم الصيدلية</b>, <b>العنوان</b>, <b>رقم الهاتف</b>, <b>يوم المناوبة</b>, <b>فتح</b>, <b>فتح AM/PM</b>, <b>إغلاق</b>, <b>إغلاق AM/PM</b><br>
           مثال: open = 10:00 و open_ampm = AM
         </div>
 
@@ -206,6 +254,17 @@ th{background:#eafaf2}
         <input id="f_pharmacy" placeholder="اسم الصيدلية">
         <input id="f_address" placeholder="العنوان">
         <input id="f_phone" placeholder="الهاتف">
+
+        <select id="f_duty_day" style="margin-top:2px">
+          <option value="">اختر يوم المناوبة</option>
+          <option>السبت</option>
+          <option>الأحد</option>
+          <option>الإثنين</option>
+          <option>الثلاثاء</option>
+          <option>الأربعاء</option>
+          <option>الخميس</option>
+          <option>الجمعة</option>
+        </select>
 
         <div class="row">
           <input id="f_open" placeholder="ساعة الفتح 10:00">
@@ -221,12 +280,12 @@ th{background:#eafaf2}
 
       <!-- Right -->
       <div class="panel">
-        <h3>سجل الصيدليات</h3>
+        <h3>سجل الصيدليات (كل الأيام)</h3>
         <div style="overflow:auto">
           <table id="adminTable"></table>
         </div>
         <div class="hint" style="margin-top:10px">
-          ملاحظة: إذا زر الحفظ ما اشتغل → غالبًا RLS مانع INSERT.
+          ملاحظة: الموقع للزوار يعرض <b>مناوبة اليوم فقط</b>.
         </div>
       </div>
     </div>
@@ -243,7 +302,7 @@ const TABLE="pharmacies";
 const ADMIN_USER="amuda.br";
 const ADMIN_PASS="@Bb300300";
 
-let pharmacies=[],filter="open";
+let pharmacies=[], filter="open";
 
 /* Toast */
 const toastEl=document.getElementById("toast");
@@ -266,6 +325,36 @@ function normTime(v){
   if(hh<1||hh>12||mm<0||mm>59) return "";
   return String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0");
 }
+function normalizeDay(v){
+  v=String(v??"").trim();
+  // نقبل أكثر من كتابة بسيطة (اختياري)
+  const map={
+    "الاثنين":"الإثنين",
+    "الاثنين ":"الإثنين",
+    "الاثنين\t":"الإثنين",
+    "الإثنين":"الإثنين",
+    "الاحد":"الأحد",
+    "الأحد":"الأحد",
+    "الثلاثاء":"الثلاثاء",
+    "الاربعاء":"الأربعاء",
+    "الأربعاء":"الأربعاء",
+    "الخميس":"الخميس",
+    "الجمعة":"الجمعة",
+    "السبت":"السبت"
+  };
+  return map[v] || v;
+}
+
+/* Arabic date */
+function getTodayArabic(){
+  const d=new Date();
+  const days=["الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
+  const dayName=days[d.getDay()];
+  const dd=String(d.getDate()).padStart(2,"0");
+  const mm=String(d.getMonth()+1).padStart(2,"0");
+  const yyyy=d.getFullYear();
+  return { dayName, dateText:`${dd}/${mm}/${yyyy}` };
+}
 
 /* time */
 function toMin(t,a){
@@ -287,7 +376,7 @@ function isOpen(p){
   return c<o ? (now>=o||now<c) : (now>=o && now<c);
 }
 
-/* REST helper with better errors */
+/* REST helper */
 async function sbFetch(path, opt={}){
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`,{
     ...opt,
@@ -301,7 +390,6 @@ async function sbFetch(path, opt={}){
   try{ text = await res.text(); }catch(_){}
   let data = null;
   try{ data = text ? JSON.parse(text) : null; }catch(_){ data = text; }
-
   if(!res.ok){
     const msg = (data && (data.message||data.error||data.details)) ? (data.message||data.error||data.details) : `HTTP ${res.status}`;
     throw new Error(msg);
@@ -309,15 +397,26 @@ async function sbFetch(path, opt={}){
   return data;
 }
 
-/* render public */
+/* render public (TODAY ONLY) */
 function render(){
+  const today = getTodayArabic();
+  const todayName = today.dayName;
+
+  document.getElementById("todayTitle").textContent = `الصيدليات المناوبة اليوم — ${todayName}`;
+
   const q=searchInput.value.toLowerCase().trim();
-  let items=pharmacies
-    .filter(p=>String(p.pharmacy??"").toLowerCase().includes(q))
+
+  // ✅ فلترة: اليوم فقط
+  let items = pharmacies
+    .filter(p => normalizeDay(p.duty_day) === todayName)
+    .filter(p => String(p.pharmacy??"").toLowerCase().includes(q))
     .map(p=>({...p,_o:isOpen(p)}));
 
   if(filter==="open") items=items.filter(p=>p._o);
   if(filter==="closed") items=items.filter(p=>!p._o);
+
+  // ترتيب: المفتوح أولاً ثم الاسم
+  items.sort((a,b)=> (b._o - a._o) || String(a.pharmacy||"").localeCompare(String(b.pharmacy||""),"ar"));
 
   list.innerHTML = items.length ? items.map(p=>`
     <div class="card">
@@ -326,12 +425,13 @@ function render(){
           <b>${esc(p.pharmacy)}</b>
           <div class="meta">📍 ${esc(p.address||"—")}</div>
           <div class="meta">📞 ${esc(p.phone||"—")}</div>
+          <div class="meta">🗓️ ${esc(normalizeDay(p.duty_day)||"—")}</div>
         </div>
-        <span class="badge ${p._o?"open":"closed"}">${p._o?"مفتوحة":"مغلقة"}</span>
+        <span class="badge ${p._o?"open":"closed"}">${p._o?"مفتوحة الآن":"مغلقة الآن"}</span>
       </div>
       <div class="meta" style="margin-top:8px">⏰ ${esc(p.open)} ${esc(p.open_ampm)} — ${esc(p.close)} ${esc(p.close_ampm)}</div>
     </div>
-  `).join("") : `<div class="empty">لا يوجد بيانات</div>`;
+  `).join("") : `<div class="empty">لا توجد صيدليات مناوبة لهذا اليوم.</div>`;
 }
 
 /* load */
@@ -344,12 +444,17 @@ async function load(){
     toast("فشل تحميل البيانات من Supabase");
     console.error(e);
   }
+
+  // تاريخ الزاوية
+  const t=getTodayArabic();
+  document.getElementById("dateBox").innerHTML = `📅 <span>${t.dayName}</span> <span class="mut">${t.dateText}</span>`;
+
   document.getElementById("loading").style.display="none";
   render();
   drawAdmin();
 }
 
-/* filters smooth */
+/* filters */
 filters.onclick=e=>{
   const b=e.target.closest("button[data-f]");
   if(!b) return;
@@ -359,6 +464,12 @@ filters.onclick=e=>{
   render();
 };
 searchInput.oninput=render;
+
+/* auto refresh open/close every minute (public only) */
+setInterval(()=> {
+  if(!document.getElementById("adminModal").classList.contains("hidden")) return;
+  render();
+}, 60000);
 
 /* login/admin */
 lockBtn.onclick=()=>loginModal.classList.remove("hidden");
@@ -378,17 +489,20 @@ function logout(){
   adminModal.classList.add("hidden");
   publicWrapper.classList.remove("hidden");
   toast("تم تسجيل الخروج");
+  render();
 }
 function closeAdmin(){
   adminModal.classList.add("hidden");
   publicWrapper.classList.remove("hidden");
+  render();
 }
 
-/* admin table */
+/* admin table (ALL DAYS) */
 function drawAdmin(){
   adminTable.innerHTML =
     `<tr>
       <th>اسم الصيدلية</th>
+      <th>اليوم</th>
       <th>الهاتف</th>
       <th>الدوام</th>
       <th>الحالة</th>
@@ -398,9 +512,10 @@ function drawAdmin(){
       const st=isOpen(p);
       return `<tr>
         <td>${esc(p.pharmacy||"")}</td>
+        <td>${esc(normalizeDay(p.duty_day)||"—")}</td>
         <td>${esc(p.phone||"")}</td>
-        <td>${esc(p.open)} ${esc(p.open_ampm)}<br>${esc(p.close)} ${esc(p.close_ampm)}</td>
-        <td><span class="${st?"open":"closed"}">${st?"مفتوحة":"مغلقة"}</span></td>
+        <td>${esc(p.open||"")} ${esc(p.open_ampm||"")}<br>${esc(p.close||"")} ${esc(p.close_ampm||"")}</td>
+        <td><span class="badge ${st?"open":"closed"}">${st?"مفتوحة":"مغلقة"}</span></td>
         <td><button class="btn danger small" type="button" onclick="delPh('${esc(p.id)}')">حذف</button></td>
       </tr>`;
     }).join("");
@@ -412,23 +527,25 @@ async function delPh(id){
     toast("تم الحذف ✅");
     await load();
   }catch(e){
-    toast("فشل الحذف — تحقق من RLS");
+    toast("فشل الحذف");
     console.error(e);
     alert("فشل الحذف:\n" + e.message);
   }
 }
 
-/* ✅ زر حفظ (إضافة صيدلية) */
+/* add pharmacy */
 async function addPharmacy(){
   const pharmacy = f_pharmacy.value.trim();
   const address  = f_address.value.trim();
   const phone    = f_phone.value.trim();
+  const duty_day = normalizeDay(f_duty_day.value);
   const open     = normTime(f_open.value);
   const close    = normTime(f_close.value);
   const open_ampm = normAmpm(f_open_ampm.value);
   const close_ampm = normAmpm(f_close_ampm.value);
 
   if(!pharmacy){ toast("أدخل اسم الصيدلية"); return; }
+  if(!duty_day){ toast("اختر يوم المناوبة"); return; }
   if(!open || !close){ toast("أدخل وقت صحيح 12 ساعة مثل 10:00"); return; }
 
   try{
@@ -438,35 +555,33 @@ async function addPharmacy(){
         "Content-Type":"application/json",
         "Prefer":"return=representation"
       },
-      body:JSON.stringify({ pharmacy,address,phone,open,open_ampm,close,close_ampm })
+      body:JSON.stringify({ pharmacy,address,phone,duty_day,open,open_ampm,close,close_ampm })
     });
+
     toast("تم الحفظ ✅");
     f_pharmacy.value=""; f_address.value=""; f_phone.value="";
+    f_duty_day.value="";
     f_open.value=""; f_close.value="";
+
     await load();
   }catch(e){
     console.error(e);
-    toast("الحفظ فشل — RLS/Policy");
-    alert(
-      "زر الحفظ لم يعمل لأن Supabase رفض الطلب.\n\n" +
-      "السبب غالبًا: RLS شغال بدون سياسة INSERT.\n\n" +
-      "تفاصيل الخطأ:\n" + e.message
-    );
+    toast("الحفظ فشل");
+    alert("فشل الحفظ:\n" + e.message);
   }
 }
 
-/* ✅ مسح السجل (Delete with filter) */
+/* clear all */
 async function clearAll(){
   const ok = confirm("سيتم حذف السجل بالكامل. متأكد؟");
   if(!ok) return;
   try{
-    // لازم شرط لأن Supabase يرفض DELETE بدون WHERE
     await sbFetch(`${TABLE}?id=neq.0`,{method:"DELETE"});
     toast("تم مسح السجل ✅");
     await load();
   }catch(e){
     console.error(e);
-    toast("فشل المسح — تحقق من RLS");
+    toast("فشل المسح");
     alert("فشل مسح السجل:\n" + e.message);
   }
 }
@@ -482,19 +597,22 @@ excelFile.onchange=async e=>{
     const ws=wb.Sheets[wb.SheetNames[0]];
     const rows=XLSX.utils.sheet_to_json(ws,{defval:""});
 
-    await clearAll();
+    // استبدال كامل
+    await sbFetch(`${TABLE}?id=neq.0`,{method:"DELETE"});
 
     for(const r of rows){
       const obj={
         pharmacy:String(r.pharmacy??r["اسم الصيدلية"]??"").trim(),
         address:String(r.address??r["العنوان"]??"").trim(),
         phone:String(r.phone??r["رقم الهاتف"]??"").trim(),
+        duty_day: normalizeDay(r.duty_day ?? r["يوم المناوبة"] ?? ""),
         open:normTime(r.open??r["فتح"]??""),
         open_ampm:normAmpm(r.open_ampm??r.openAmpm??r["فتح AM/PM"]??""),
         close:normTime(r.close??r["إغلاق"]??r["اغلاق"]??""),
         close_ampm:normAmpm(r.close_ampm??r.closeAmpm??r["إغلاق AM/PM"]??"")
       };
-      if(!obj.pharmacy || !obj.open || !obj.close) continue;
+
+      if(!obj.pharmacy || !obj.duty_day || !obj.open || !obj.close) continue;
 
       await sbFetch(`${TABLE}`,{
         method:"POST",
@@ -520,3 +638,4 @@ load();
 </script>
 </body>
 </html>
+```0
